@@ -2,6 +2,8 @@
  * styles.css - 班级班务管理系统样式文件
  * 用于定义全局样式、表单控件、物资卡片、课程情报、文档资源等模块的视觉表现
  * 支持响应式布局，适配移动端、平板和桌面端
+ * 
+ * 新增：登录表单与权限控制相关样式（2026-03-16）
  */
 
 /* 全局重置与基础样式 */
@@ -469,6 +471,153 @@ select.form-control {
   text-decoration: underline;
 }
 
+/* ================== 权限控制与登录表单样式 (新增) ================== */
+
+/* 登录表单容器 */
+#login-form-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--border-radius-md);
+  padding: 0.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+}
+
+#login-form-container:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* 用户名与密码输入框 */
+#username,
+#password {
+  width: 80px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-gray-300);
+  border-radius: calc(var(--border-radius-md) - 2px);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+#username:focus,
+#password:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* 移动端适配：输入框宽度调整 */
+@media (max-width: 480px) {
+  #login-form-container {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0.5rem;
+  }
+
+  #username,
+  #password {
+    width: 120px;
+    margin-bottom: 0.25rem;
+  }
+}
+
+/* 登录按钮 */
+#login-form-container button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+#login-form-container button:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+#login-form-container button:active {
+  transform: translateY(0);
+}
+
+/* 登录状态显示区域 */
+#user-display-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-success);
+}
+
+/* "管理功能"入口容器 */
+#admin-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* 管理按钮统一风格 */
+#admin-panel button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  box-shadow: var(--shadow-sm);
+}
+
+#admin-panel button:hover {
+  background-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+#admin-panel button:active {
+  transform: translateY(0);
+}
+
+/* 响应式处理：在小屏幕上堆叠显示 */
+@media (max-width: 640px) {
+  #admin-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #admin-panel button {
+    justify-content: center;
+  }
+}
+
+/* 显示/隐藏过渡动画 */
+#login-form-container,
+#admin-panel {
+  opacity: 1;
+  visibility: visible;
+}
+
+#login-form-container.hidden,
+#admin-panel.hidden {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* ================== 响应式设计体系 ================== */
+
 /* 响应式设计 - 平板 (768px - 1024px) */
 @media (min-width: 768px) and (max-width: 1023px) {
   body {
@@ -499,6 +648,12 @@ select.form-control {
   .file-item {
     padding: 0.625rem 0.875rem;
   }
+
+  /* 登录表单在平板上的尺寸 */
+  #username,
+  #password {
+    width: 100px;
+  }
 }
 
 /* 响应式设计 - 桌面端 (> 1024px) */
@@ -522,6 +677,12 @@ select.form-control {
 
   .file-item {
     padding: 0.875rem 1.25rem;
+  }
+
+  /* 登录表单在桌面端的尺寸 */
+  #username,
+  #password {
+    width: 120px;
   }
 }
 
@@ -573,5 +734,19 @@ select.form-control {
 
   .mobile-nav-active {
     display: flex !important;
+  }
+
+  /* 登录表单移动端适配 */
+  #login-form-container {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+  }
+
+  #username,
+  #password {
+    width: 100px;
+    margin-bottom: 0.25rem;
   }
 }

@@ -4,793 +4,818 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>班级班务管理系统</title>
+<title>ClassMaster - 班级班务管理系统</title>
 <!-- Tailwind CSS -->
 <script src="https://image.uc.cn/s/uae/g/3n/mos-production/0915/3.4.17.js"></script>
 <!-- Font Awesome -->
 <script src="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/js/all.min.js"></script>
 <link href="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/css/fontawesome.min.css" rel="stylesheet"/>
 <style>
-        /* Custom Styles & Animations */
+        /* Custom Styles & Transitions */
         body {
             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            -webkit-font-smoothing: antialiased;
+            background-color: #f3f4f6;
         }
-
-        /* Hide scrollbar for clean modal look */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        /* Toast Animation */
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-        .toast-enter {
-            animation: slideIn 0.3s ease-out forwards;
-        }
-        .toast-exit {
-            animation: fadeOut 0.3s ease-out forwards;
-        }
-
-        /* LLM Typing Effect Cursor */
-        .typing-cursor::after {
-            content: '|';
-            animation: blink 1s step-end infinite;
-        }
-        @keyframes blink {
-            50% { opacity: 0; }
-        }
-
-        /* Tab Transition */
+        
+        /* Smooth fade transition for tabs */
         .tab-content {
             display: none;
-            animation: fadeIn 0.4s ease-in-out;
+            animation: fadeIn 0.3s ease-in-out;
         }
+        
         .tab-content.active {
             display: block;
         }
+        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* Toast Notification Styles */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .toast {
+            min-width: 250px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease-out forwards;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .toast.success { background-color: #10b981; }
+        .toast.error { background-color: #ef4444; }
+        .toast.info { background-color: #3b82f6; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Chat Interface Styles */
+        .chat-box {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            background: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+        .message {
+            margin-bottom: 0.75rem;
+            padding: 0.5rem 1rem;
+            border-radius: 1rem;
+            max-width: 80%;
+            font-size: 0.9rem;
+        }
+        .message.user {
+            background-color: #3b82f6;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 0;
+        }
+        .message.bot {
+            background-color: #f3f4f6;
+            color: #1f2937;
+            margin-right: auto;
+            border-bottom-left-radius: 0;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
-<!-- Navigation Bar -->
+<body class="flex flex-col min-h-screen text-gray-800">
+<!-- Header Section -->
 <header class="bg-white shadow-md sticky top-0 z-50">
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-<div class="flex justify-between h-16">
-<div class="flex items-center">
-<div class="flex-shrink-0 flex items-center text-indigo-600">
-<i class="fa-solid fa-graduation-cap text-2xl mr-2"></i>
-<span class="font-bold text-xl tracking-tight">ClassMaster</span>
+<div class="container mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4">
+<!-- Logo / Title -->
+<div class="flex items-center space-x-2">
+<i class="fa-solid fa-graduation-cap text-blue-600 text-2xl"></i>
+<h1 class="text-xl font-bold text-gray-800">ClassMaster</h1>
 </div>
+<!-- Authentication & Admin Controls -->
+<div class="flex items-center gap-4 w-full md:w-auto justify-end">
+<!-- Login Form (Visible when logged out) -->
+<div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200" id="login-form-container">
+<input class="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 w-24 md:w-32" id="username" placeholder="用户名" type="text"/>
+<input class="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500 w-24 md:w-32" id="password" placeholder="密码" type="password"/>
+<button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 text-sm rounded transition-colors" onclick="handleLogin()">
+                        登录
+                    </button>
 </div>
-<!-- Desktop Nav -->
-<nav aria-label="Global" class="hidden sm:flex space-x-8 items-center">
-<button class="nav-btn text-indigo-600 border-b-2 border-indigo-600 px-1 pt-1 text-sm font-medium transition-colors" data-target="info" onclick="switchTab('info')">信息收集</button>
-<button class="nav-btn text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent px-1 pt-1 text-sm font-medium transition-colors" data-target="items" onclick="switchTab('items')">物资共享</button>
-<button class="nav-btn text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent px-1 pt-1 text-sm font-medium transition-colors" data-target="courses" onclick="switchTab('courses')">课作业查询</button>
-<button class="nav-btn text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent px-1 pt-1 text-sm font-medium transition-colors" data-target="docs" onclick="switchTab('docs')">文档资源</button>
-</nav>
-<!-- Mobile Menu Button (Simplified) -->
-<div class="flex items-center sm:hidden">
-<button class="text-gray-500 hover:text-gray-700 focus:outline-none" id="mobile-menu-btn">
-<i class="fa-solid fa-bars text-xl"></i>
+<!-- Logged In Status & Admin Panel (Hidden by default) -->
+<div class="hidden flex items-center gap-3" id="admin-panel">
+<div class="flex items-center gap-2 text-sm text-green-600 font-medium bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
+<i class="fa-solid fa-circle-check"></i>
+<span id="user-display-name">Admin</span>
+</div>
+<!-- Management Entries -->
+<div class="flex gap-2">
+<button class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1" onclick="switchTab('info'); toggleAdminMode('info')">
+<i class="fa-solid fa-clipboard-list"></i> 信息收集管理
+                        </button>
+<button class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1" onclick="switchTab('docs'); toggleAdminMode('docs')">
+<i class="fa-solid fa-folder-open"></i> 文档资源管理
+                        </button>
+</div>
+<button class="text-gray-500 hover:text-red-500 transition-colors ml-2" onclick="handleLogout()" title="退出登录">
+<i class="fa-solid fa-right-from-bracket text-lg"></i>
 </button>
 </div>
-</div>
-</div>
-<!-- Mobile Nav (Hidden by default) -->
-<div class="hidden sm:hidden bg-white border-t" id="mobile-menu">
-<div class="pt-2 pb-3 space-y-1">
-<button class="mobile-nav-btn block w-full text-left pl-3 pr-4 py-2 border-l-4 border-indigo-500 text-indigo-700 bg-indigo-50 text-base font-medium" onclick="switchTab('info')">信息收集</button>
-<button class="mobile-nav-btn block w-full text-left pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 text-base font-medium" onclick="switchTab('items')">物资共享</button>
-<button class="mobile-nav-btn block w-full text-left pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 text-base font-medium" onclick="switchTab('courses')">课作业查询</button>
-<button class="mobile-nav-btn block w-full text-left pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 text-base font-medium" onclick="switchTab('docs')">文档资源</button>
 </div>
 </div>
 </header>
-<!-- Main Content -->
-<main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-<!-- MODULE 1: Info Collection -->
-<section class="tab-content active" id="info">
-<div class="flex justify-between items-center mb-6">
-<h2 class="text-2xl font-bold text-gray-900"><i class="fa-solid fa-clipboard-list mr-2 text-indigo-600"></i>信息收集</h2>
-<button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow transition flex items-center" onclick="toggleCreateForm()">
-<i class="fa-solid fa-plus mr-2"></i>新建收集
+<!-- Navigation Tabs -->
+<nav class="bg-white border-b border-gray-200">
+<div class="container mx-auto px-4">
+<div class="flex overflow-x-auto space-x-1" id="nav-tabs">
+<button class="tab-btn active px-6 py-4 text-sm font-medium border-b-2 border-transparent hover:text-blue-600 focus:outline-none transition-colors whitespace-nowrap" data-target="info" onclick="switchTab('info')">
+<i class="fa-solid fa-poll-together mr-2"></i>信息收集
+                </button>
+<button class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent hover:text-blue-600 focus:outline-none transition-colors whitespace-nowrap" data-target="material" onclick="switchTab('material')">
+<i class="fa-solid fa-box-open mr-2"></i>物资共享
+                </button>
+<button class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent hover:text-blue-600 focus:outline-none transition-colors whitespace-nowrap" data-target="homework" onclick="switchTab('homework')">
+<i class="fa-solid fa-book-open mr-2"></i>课作业查询
+                </button>
+<button class="tab-btn px-6 py-4 text-sm font-medium border-b-2 border-transparent hover:text-blue-600 focus:outline-none transition-colors whitespace-nowrap" data-target="docs" onclick="switchTab('docs')">
+<i class="fa-solid fa-file-pdf mr-2"></i>文档资源
                 </button>
 </div>
-<!-- Create Form Area (Hidden by default) -->
-<div class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8" id="create-form-area">
-<h3 class="text-lg font-semibold mb-4">创建新的信息收集表单</h3>
-<div class="space-y-4">
-<div>
-<label class="block text-sm font-medium text-gray-700">表单标题</label>
-<input class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" id="new-form-title" placeholder="例如：周末秋游意向统计" type="text"/>
 </div>
-<div>
-<label class="block text-sm font-medium text-gray-700">收集项 (每行一个问题)</label>
-<textarea class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" id="new-form-questions" placeholder="姓名
-学号
-联系电话" rows="4"></textarea>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-grow container mx-auto px-4 py-8">
+<!-- Tab 1: Info Collection -->
+<section class="tab-content active" id="tab-info">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-2xl font-bold text-gray-800">信息收集</h2>
+<!-- Admin Only: Create Form Button -->
+<button class="hidden bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow transition-colors" id="btn-create-form" onclick="openCreateFormModal()">
+<i class="fa-solid fa-plus mr-2"></i>创建收集表单
+                </button>
 </div>
-<div class="flex justify-end space-x-3">
-<button class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50" onclick="toggleCreateForm()">取消</button>
-<button class="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700" onclick="saveNewForm()">发布表单</button>
-</div>
-</div>
-</div>
-<!-- Forms List -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="forms-container">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="forms-list">
 <!-- Forms will be injected here via JS -->
 </div>
 </section>
-<!-- MODULE 2: Item Sharing -->
-<section class="tab-content" id="items">
+<!-- Tab 2: Material Sharing -->
+<section class="tab-content" id="tab-material">
 <div class="flex justify-between items-center mb-6">
-<h2 class="text-2xl font-bold text-gray-900"><i class="fa-solid fa-boxes-stacked mr-2 text-green-600"></i>物资共享</h2>
-<button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow transition flex items-center" onclick="openAddItemModal()">
-<i class="fa-solid fa-upload mr-2"></i>上架物资
+<h2 class="text-2xl font-bold text-gray-800">物资共享与借用</h2>
+<button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow transition-colors" onclick="openShareMaterialModal()">
+<i class="fa-solid fa-hand-holding-heart mr-2"></i>上架物资
                 </button>
 </div>
-<!-- Add Item Modal (Inline) -->
-<div class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center" id="add-item-modal">
-<div class="relative p-5 border w-96 shadow-lg rounded-xl bg-white">
-<h3 class="text-lg font-bold text-gray-900 mb-4">上架借用物资</h3>
-<div class="space-y-4">
-<input class="w-full border p-2 rounded" id="item-name" placeholder="物品名称 (如: 充电宝)" type="text"/>
-<textarea class="w-full border p-2 rounded" id="item-desc" placeholder="物品描述/归还条件"></textarea>
-<div class="flex justify-end space-x-2">
-<button class="px-3 py-2 bg-gray-200 rounded text-gray-700" onclick="closeAddItemModal()">取消</button>
-<button class="px-3 py-2 bg-green-600 rounded text-white" onclick="addItem()">确认上架</button>
-</div>
-</div>
-</div>
-</div>
-<!-- Items Grid -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="items-grid">
-<!-- Items injected via JS -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="materials-list">
+<!-- Materials will be injected here via JS -->
 </div>
 </section>
-<!-- MODULE 3: Coursework Query -->
-<section class="tab-content" id="courses">
-<div class="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)]">
+<!-- Tab 3: Assignment Query -->
+<section class="tab-content" id="tab-homework">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 <!-- Left: Course List -->
-<div class="w-full lg:w-1/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-<div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-<h3 class="font-bold text-gray-700">课程列表</h3>
-<button class="text-indigo-600 hover:text-indigo-800 text-sm font-medium" onclick="openAddCourseModal()"><i class="fa-solid fa-plus"></i> 新建</button>
-</div>
-<div class="flex-1 overflow-y-auto p-2 space-y-2" id="course-list">
-<!-- Course items injected here -->
-</div>
-</div>
-<!-- Right: Course Details & LLM -->
-<div class="w-full lg:w-2/3 flex flex-col gap-4">
-<!-- Detail View -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex-1 overflow-y-auto hidden" id="course-detail-panel">
-<div class="flex justify-between items-start mb-4">
 <div>
-<h2 class="text-2xl font-bold text-gray-900" id="detail-course-name"></h2>
-<p class="text-sm text-gray-500 mt-1" id="detail-teacher-name"></p>
-</div>
-<button class="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 transition" onclick="openUploadInfoModal()">
-<i class="fa-solid fa-pen-to-square mr-1"></i>上传情报
-                            </button>
-</div>
-<div class="border-t pt-4">
-<h4 class="font-semibold text-gray-800 mb-3">课程情报</h4>
-<div class="space-y-3" id="course-intel-list">
-<!-- Intel items -->
+<h2 class="text-2xl font-bold text-gray-800 mb-6">课程情报列表</h2>
+<div class="space-y-4" id="course-list">
+<!-- Courses injected here -->
 </div>
 </div>
+<!-- Right: LLM Q&A Simulation -->
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col h-[600px]">
+<h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+<i class="fa-solid fa-robot text-blue-500 mr-2"></i> 智能作业助手
+                    </h2>
+<div class="chat-box flex-grow mb-4" id="chat-history">
+<div class="message bot">你好！我是班级作业助手。你可以问我关于课程作业、考试安排的问题。例如：“Web前端有什么作业？”</div>
 </div>
-<!-- Empty State for Detail -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 flex flex-col items-center justify-center text-gray-400" id="course-empty-state">
-<i class="fa-solid fa-book-open text-6xl mb-4"></i>
-<p>请选择一门课程查看详情</p>
-</div>
-<!-- LLM Query Area -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-<div class="flex items-center justify-between mb-2">
-<span class="text-sm font-bold text-gray-700"><i class="fa-solid fa-robot mr-1"></i>AI 助教查询</span>
-</div>
-<div class="relative">
-<input class="w-full border border-gray-300 rounded-lg pl-4 pr-12 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none" id="llm-input" placeholder="询问作业截止时间、考试地点等..." type="text"/>
-<button class="absolute right-2 top-1.5 text-indigo-600 hover:text-indigo-800" onclick="askLLM()">
+<div class="flex gap-2">
+<input class="flex-grow border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500" id="chat-input" onkeypress="if(event.key === 'Enter') sendChatMessage()" placeholder="输入您的问题..." type="text"/>
+<button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors" onclick="sendChatMessage()">
 <i class="fa-solid fa-paper-plane"></i>
 </button>
 </div>
-<div class="mt-3 hidden" id="llm-response-area">
-<div class="bg-gray-50 rounded-lg p-3 text-sm text-gray-700 border border-gray-100">
-<p class="typing-cursor" id="llm-text"></p>
-<div class="mt-2 text-xs text-indigo-500 border-t border-gray-200 pt-2 hidden" id="llm-citations"></div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Add Course Modal -->
-<div class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center" id="add-course-modal">
-<div class="relative p-5 border w-96 shadow-lg rounded-xl bg-white">
-<h3 class="text-lg font-bold text-gray-900 mb-4">新建课程主页</h3>
-<div class="space-y-4">
-<input class="w-full border p-2 rounded" id="course-name-input" placeholder="课程名称 (如: 高等数学)" type="text"/>
-<input class="w-full border p-2 rounded" id="teacher-name-input" placeholder="授课老师姓名" type="text"/>
-<div class="flex justify-end space-x-2">
-<button class="px-3 py-2 bg-gray-200 rounded text-gray-700" onclick="closeAddCourseModal()">取消</button>
-<button class="px-3 py-2 bg-indigo-600 rounded text-white" onclick="addCourse()">创建</button>
-</div>
-</div>
-</div>
-</div>
-<!-- Upload Intel Modal -->
-<div class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center" id="upload-intel-modal">
-<div class="relative p-5 border w-96 shadow-lg rounded-xl bg-white">
-<h3 class="text-lg font-bold text-gray-900 mb-4">上传课程情报</h3>
-<div class="space-y-4">
-<select class="w-full border p-2 rounded" id="intel-type">
-<option value="作业">作业</option>
-<option value="考试">考试</option>
-<option value="课堂任务">课堂任务</option>
-<option value="其他">其他</option>
-</select>
-<input class="w-full border p-2 rounded" id="intel-title" placeholder="标题 (如: 第一次作业)" type="text"/>
-<textarea class="w-full border p-2 rounded" id="intel-content" placeholder="详细内容 (时间、地点、要求等)" rows="3"></textarea>
-<div class="flex justify-end space-x-2">
-<button class="px-3 py-2 bg-gray-200 rounded text-gray-700" onclick="closeUploadInfoModal()">取消</button>
-<button class="px-3 py-2 bg-blue-600 rounded text-white" onclick="uploadIntel()">提交</button>
-</div>
-</div>
 </div>
 </div>
 </section>
-<!-- MODULE 4: Document Resources -->
-<section class="tab-content" id="docs">
+<!-- Tab 4: Document Resources -->
+<section class="tab-content" id="tab-docs">
 <div class="flex justify-between items-center mb-6">
-<h2 class="text-2xl font-bold text-gray-900"><i class="fa-solid fa-folder-open mr-2 text-yellow-600"></i>文档资源</h2>
-<label class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition flex items-center cursor-pointer">
+<h2 class="text-2xl font-bold text-gray-800">文档资源</h2>
+<!-- Admin Only: Upload Button -->
+<button class="hidden bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg shadow transition-colors" id="btn-upload-doc" onclick="openUploadDocModal()">
 <i class="fa-solid fa-cloud-arrow-up mr-2"></i>上传文档
-                    <input class="hidden" id="file-upload-input" onchange="handleFileUpload(this)" type="file"/>
-</label>
+                </button>
 </div>
-<!-- File List -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+<div class="bg-white rounded-lg shadow overflow-hidden">
 <table class="min-w-full divide-y divide-gray-200">
 <thead class="bg-gray-50">
 <tr>
-<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">文件名</th>
-<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">类型</th>
-<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">大小</th>
-<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">上传者</th>
-<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">操作</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">文件名</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类型</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">大小</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">上传者</th>
+<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
 </tr>
 </thead>
-<tbody class="bg-white divide-y divide-gray-200" id="file-list-body">
-<!-- Files injected here -->
+<tbody class="bg-white divide-y divide-gray-200" id="docs-list">
+<!-- Docs injected here -->
 </tbody>
 </table>
-<div class="hidden p-8 text-center text-gray-500" id="empty-files-msg">
-                    暂无文档资源，请上传。
-                </div>
 </div>
 </section>
 </main>
-<!-- Toast Container -->
-<div class="fixed bottom-5 right-5 z-50 flex flex-col gap-2" id="toast-container"></div>
 <!-- Footer -->
-<footer class="bg-white border-t mt-auto">
-<div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-<p class="text-center text-gray-400 text-sm">
-                © 2026 ClassMaster System. All rights reserved.
-            </p>
+<footer class="bg-gray-800 text-gray-300 py-6 mt-auto">
+<div class="container mx-auto px-4 text-center">
+<p>© 2026 ClassMaster System. All rights reserved.</p>
 </div>
 </footer>
-<!-- JavaScript Logic -->
+<!-- Toast Container -->
+<div id="toast-container"></div>
+<!-- Modals (Hidden by default) -->
+<!-- Create Form Modal -->
+<div class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4" id="modal-create-form">
+<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+<h3 class="text-lg font-bold mb-4">创建信息收集表单</h3>
+<div class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-gray-700">标题</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md p-2" id="new-form-title" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700">问题 (用逗号分隔)</label>
+<textarea class="mt-1 block w-full border border-gray-300 rounded-md p-2" id="new-form-questions" placeholder="例如：姓名, 电话, 宿舍号" rows="3"></textarea>
+</div>
+</div>
+<div class="mt-6 flex justify-end gap-3">
+<button class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded" onclick="closeModal('modal-create-form')">取消</button>
+<button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onclick="submitNewForm()">创建</button>
+</div>
+</div>
+</div>
+<!-- Share Material Modal -->
+<div class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4" id="modal-share-material">
+<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+<h3 class="text-lg font-bold mb-4">上架共享物资</h3>
+<div class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-gray-700">物资名称</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md p-2" id="new-item-name" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700">描述</label>
+<textarea class="mt-1 block w-full border border-gray-300 rounded-md p-2" id="new-item-desc" rows="2"></textarea>
+</div>
+</div>
+<div class="mt-6 flex justify-end gap-3">
+<button class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded" onclick="closeModal('modal-share-material')">取消</button>
+<button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700" onclick="submitNewItem()">上架</button>
+</div>
+</div>
+</div>
+<!-- Upload Doc Modal -->
+<div class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4" id="modal-upload-doc">
+<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+<h3 class="text-lg font-bold mb-4">上传文档</h3>
+<div class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-gray-700">文件名</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md p-2" id="new-doc-name" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700">类型</label>
+<select class="mt-1 block w-full border border-gray-300 rounded-md p-2" id="new-doc-type">
+<option value="PDF">PDF</option>
+<option value="Excel">Excel</option>
+<option value="Word">Word</option>
+<option value="PPT">PPT</option>
+</select>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700">大小 (MB)</label>
+<input class="mt-1 block w-full border border-gray-300 rounded-md p-2" id="new-doc-size" step="0.1" type="number" value="1.0"/>
+</div>
+</div>
+<div class="mt-6 flex justify-end gap-3">
+<button class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded" onclick="closeModal('modal-upload-doc')">取消</button>
+<button class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700" onclick="submitNewDoc()">上传</button>
+</div>
+</div>
+</div>
+<!-- Fill Form Modal -->
+<div class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4" id="modal-fill-form">
+<div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+<h3 class="text-lg font-bold mb-4" id="fill-form-title">填写表单</h3>
+<div class="space-y-4" id="fill-form-questions">
+<!-- Questions injected here -->
+</div>
+<div class="mt-6 flex justify-end gap-3">
+<button class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded" onclick="closeModal('modal-fill-form')">取消</button>
+<button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onclick="submitFormResponse()">提交</button>
+</div>
+</div>
+</div>
 <script>
-        // --- State Management & Initialization ---
+        // --- State Management ---
         const state = {
+            currentUser: null, // null or 'admin'
+            forms: [],
+            items: [],
+            courses: [],
+            docs: [],
             activeTab: 'info',
-            currentCourseId: null,
-            data: {
-                forms: JSON.parse(localStorage.getItem('class_forms')) || [
-                    { id: 1, title: '班级通讯录更新', questions: ['姓名', '电话', '微信号', '宿舍号'], responses: [] },
-                    { id: 2, title: '期末复习资料意愿', questions: ['需要高数复习卷吗？', '需要英语听力吗？'], responses: [] }
-                ],
-                items: JSON.parse(localStorage.getItem('class_items')) || [
-                    { id: 1, name: '羽毛球拍', desc: '尤尼克斯，状态良好', owner: '李明', status: 'available' },
-                    { id: 2, name: '《三体》全集', desc: '刘慈欣著，借阅请爱惜', owner: '王强', status: 'borrowed' }
-                ],
-                courses: JSON.parse(localStorage.getItem('class_courses')) || [
-                    { id: 1, name: 'Web前端开发', teacher: '张老师', intel: [
-                        { type: '作业', title: 'HTML原型设计', content: '下周一前提交，需包含导航栏和Footer', date: '2026-03-08' },
-                        { type: '考试', title: '期中考', content: '第四章到第六章，闭卷', date: '2026-04-15' }
-                    ]},
-                    { id: 2, name: '数据结构', teacher: '刘教授', intel: [] }
-                ],
-                files: JSON.parse(localStorage.getItem('class_files')) || [
-                    { id: 1, name: '班级公约.pdf', type: 'PDF', size: '1.2MB', uploader: '班长' },
-                    { id: 2, name: '课表_2026春.xlsx', type: 'Excel', size: '45KB', uploader: '学习委员' }
-                ]
-            }
+            activeFormId: null
         };
 
-        // --- Utility Functions ---
-        function saveData() {
-            localStorage.setItem('class_forms', JSON.stringify(state.data.forms));
-            localStorage.setItem('class_items', JSON.stringify(state.data.items));
-            localStorage.setItem('class_courses', JSON.stringify(state.data.courses));
-            localStorage.setItem('class_files', JSON.stringify(state.data.files));
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            checkLoginStatus();
+            renderAll();
+        });
+
+        // --- Data Persistence ---
+        function loadData() {
+            // Load from localStorage or initialize with defaults
+            state.forms = JSON.parse(localStorage.getItem('class_forms')) || [
+                { id: 1, title: '班级通讯录更新', questions: ['姓名', '电话', '微信号', '宿舍号'], responses: [] },
+                { id: 2, title: '期末复习资料意愿', questions: ['需要高数复习卷吗？', '需要英语听力吗？'], responses: [] }
+            ];
+            state.items = JSON.parse(localStorage.getItem('class_items')) || [
+                { id: 1, name: '羽毛球拍', desc: '尤尼克斯，状态良好', owner: '李明', status: 'available' },
+                { id: 2, name: '《三体》全集', desc: '刘慈欣著，借阅请爱惜', owner: '王强', status: 'borrowed' }
+            ];
+            state.courses = JSON.parse(localStorage.getItem('class_courses')) || [
+                { 
+                    id: 1, name: 'Web前端开发', teacher: '张老师', 
+                    info: [
+                        { type: '作业', title: 'HTML原型设计', content: '下周一前提交，需包含导航栏和Footer', date: '2026-03-08' },
+                        { type: '考试', title: '期中考', content: '第四章到第六章，闭卷', date: '2026-04-15' }
+                    ]
+                },
+                { id: 2, name: '数据结构', teacher: '刘教授', info: [] }
+            ];
+            state.docs = JSON.parse(localStorage.getItem('class_files')) || [
+                { id: 1, name: '班级公约.pdf', type: 'PDF', size: '1.2MB', uploader: '班长' },
+                { id: 2, name: '课表_2026春.xlsx', type: 'Excel', size: '45KB', uploader: '学习委员' }
+            ];
         }
 
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            
-            const colors = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
-            const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
+        function saveData() {
+            localStorage.setItem('class_forms', JSON.stringify(state.forms));
+            localStorage.setItem('class_items', JSON.stringify(state.items));
+            localStorage.setItem('class_courses', JSON.stringify(state.courses));
+            localStorage.setItem('class_files', JSON.stringify(state.docs));
+        }
 
-            toast.className = `${colors} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 toast-enter min-w-[300px]`;
-            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
-            
-            container.appendChild(toast);
+        // --- Authentication Logic ---
+        function checkLoginStatus() {
+            const storedUser = localStorage.getItem('class_user');
+            if (storedUser) {
+                state.currentUser = storedUser;
+                updateAuthUI();
+            }
+        }
 
-            setTimeout(() => {
-                toast.classList.remove('toast-enter');
-                toast.classList.add('toast-exit');
-                toast.addEventListener('animationend', () => toast.remove());
-            }, 3000);
+        function handleLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (username === 'admin' && password === 'admin') {
+                state.currentUser = 'admin';
+                localStorage.setItem('class_user', 'admin');
+                showToast('登录成功！欢迎回来，管理员。', 'success');
+                updateAuthUI();
+            } else {
+                showToast('用户名或密码错误 (提示: admin/admin)', 'error');
+            }
+        }
+
+        function handleLogout() {
+            state.currentUser = null;
+            localStorage.removeItem('class_user');
+            showToast('已安全退出', 'info');
+            updateAuthUI();
+            // Reset to default view if needed
+            renderAll();
+        }
+
+        function updateAuthUI() {
+            const loginContainer = document.getElementById('login-form-container');
+            const adminPanel = document.getElementById('admin-panel');
+            const userDisplay = document.getElementById('user-display-name');
+
+            if (state.currentUser) {
+                loginContainer.classList.add('hidden');
+                adminPanel.classList.remove('hidden');
+                userDisplay.textContent = state.currentUser;
+            } else {
+                loginContainer.classList.remove('hidden');
+                adminPanel.classList.add('hidden');
+            }
+            
+            // Re-render components to show/hide admin specific buttons
+            renderAll();
         }
 
         // --- Navigation Logic ---
         function switchTab(tabId) {
-            // Update UI State
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-
-            // Update Nav Buttons (Desktop)
-            document.querySelectorAll('.nav-btn').forEach(btn => {
+            state.activeTab = tabId;
+            
+            // Update Tab Buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
                 if(btn.dataset.target === tabId) {
-                    btn.classList.add('text-indigo-600', 'border-indigo-600');
-                    btn.classList.remove('text-gray-500', 'border-transparent');
+                    btn.classList.add('active', 'text-blue-600', 'border-blue-600');
+                    btn.classList.remove('border-transparent', 'text-gray-500');
                 } else {
-                    btn.classList.remove('text-indigo-600', 'border-indigo-600');
-                    btn.classList.add('text-gray-500', 'border-transparent');
+                    btn.classList.remove('active', 'text-blue-600', 'border-blue-600');
+                    btn.classList.add('border-transparent', 'text-gray-500');
                 }
             });
 
-            // Mobile Menu handling
-            document.getElementById('mobile-menu').classList.add('hidden');
-            state.activeTab = tabId;
-        }
-
-        document.getElementById('mobile-menu-btn').addEventListener('click', () => {
-            document.getElementById('mobile-menu').classList.toggle('hidden');
-        });
-
-        // --- Module 1: Info Collection Logic ---
-        function renderForms() {
-            const container = document.getElementById('forms-container');
-            container.innerHTML = '';
-            
-            state.data.forms.forEach(form => {
-                const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition';
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-3">
-                        <h3 class="font-bold text-lg text-gray-800">${form.title}</h3>
-                        <span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">进行中</span>
-                    </div>
-                    <p class="text-sm text-gray-500 mb-4">包含 ${form.questions.length} 个问题</p>
-                    <button onclick="openFillForm(${form.id})" class="w-full block text-center bg-indigo-50 text-indigo-600 py-2 rounded-lg font-medium hover:bg-indigo-100 transition">填写表单</button>
-                `;
-                container.appendChild(card);
+            // Update Content Sections
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
             });
+            document.getElementById(`tab-${tabId}`).classList.add('active');
         }
 
-        function toggleCreateForm() {
-            const area = document.getElementById('create-form-area');
-            area.classList.toggle('hidden');
+        function toggleAdminMode(target) {
+            // Helper to scroll to admin controls or highlight them
+            // In this simple implementation, switching tab is enough because renderAll() handles visibility
+            showToast(`已切换至${target === 'info' ? '信息收集' : '文档资源'}管理视图`, 'info');
         }
 
-        function saveNewForm() {
-            const title = document.getElementById('new-form-title').value;
-            const questionsRaw = document.getElementById('new-form-questions').value;
+        // --- Rendering Logic ---
+        function renderAll() {
+            renderForms();
+            renderMaterials();
+            renderCourses();
+            renderDocs();
+        }
+
+        function renderForms() {
+            const container = document.getElementById('forms-list');
+            const createBtn = document.getElementById('btn-create-form');
             
-            if(!title || !questionsRaw) {
+            // Permission Control: Show Create Button only if logged in
+            if (state.currentUser) {
+                createBtn.classList.remove('hidden');
+            } else {
+                createBtn.classList.add('hidden');
+            }
+
+            container.innerHTML = state.forms.map(form => `
+                <div class="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow border border-gray-100">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="font-bold text-lg text-gray-800">${form.title}</h3>
+                        <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">${form.responses.length} 人已填</span>
+                    </div>
+                    <p class="text-gray-500 text-sm mb-4">包含 ${form.questions.length} 个问题</p>
+                    <button onclick="openFillFormModal(${form.id})" class="w-full bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium py-2 px-4 rounded transition-colors">
+                        填写表单
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderMaterials() {
+            const container = document.getElementById('materials-list');
+            container.innerHTML = state.items.map(item => `
+                <div class="bg-white p-6 rounded-lg shadow border border-gray-100 flex flex-col justify-between h-full">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-box text-gray-400"></i>
+                            <h3 class="font-bold text-lg text-gray-800">${item.name}</h3>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">${item.desc}</p>
+                        <div class="flex justify-between text-xs text-gray-500 mb-4">
+                            <span><i class="fa-regular fa-user"></i> ${item.owner}</span>
+                            <span class="${item.status === 'available' ? 'text-green-600' : 'text-red-500'}">
+                                ${item.status === 'available' ? '可借用' : '已借出'}
+                            </span>
+                        </div>
+                    </div>
+                    <button 
+                        onclick="borrowItem(${item.id})" 
+                        class="w-full ${item.status === 'available' ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-300 cursor-not-allowed'} text-white font-medium py-2 px-4 rounded transition-colors"
+                        ${item.status !== 'available' ? 'disabled' : ''}
+                    >
+                        ${item.status === 'available' ? '申请借用' : '已借出'}
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderCourses() {
+            const container = document.getElementById('course-list');
+            container.innerHTML = state.courses.map(course => `
+                <div class="bg-white p-5 rounded-lg shadow border border-gray-100">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-gray-800">${course.name}</h3>
+                        <span class="text-sm text-gray-500">${course.teacher}</span>
+                    </div>
+                    <div class="space-y-3">
+                        ${course.info.length > 0 ? course.info.map(info => `
+                            <div class="pl-4 border-l-2 ${info.type === '作业' ? 'border-blue-400' : 'border-red-400'}">
+                                <div class="flex justify-between">
+                                    <span class="text-xs font-bold ${info.type === '作业' ? 'text-blue-600' : 'text-red-600'}">${info.type}</span>
+                                    <span class="text-xs text-gray-400">${info.date}</span>
+                                </div>
+                                <p class="text-sm font-medium text-gray-700">${info.title}</p>
+                                <p class="text-xs text-gray-500">${info.content}</p>
+                            </div>
+                        `).join('') : '<p class="text-sm text-gray-400 italic">暂无情报</p>'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderDocs() {
+            const container = document.getElementById('docs-list');
+            const uploadBtn = document.getElementById('btn-upload-doc');
+            
+            if (state.currentUser) {
+                uploadBtn.classList.remove('hidden');
+            } else {
+                uploadBtn.classList.add('hidden');
+            }
+
+            container.innerHTML = state.docs.map(doc => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <i class="fa-regular ${doc.type === 'PDF' ? 'fa-file-pdf text-red-500' : doc.type === 'Excel' ? 'fa-file-excel text-green-500' : 'fa-file-word text-blue-500'} text-xl mr-3"></i>
+                            <div class="text-sm font-medium text-gray-900">${doc.name}</div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${doc.type}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${doc.size}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${doc.uploader}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="downloadDoc('${doc.name}')" class="text-blue-600 hover:text-blue-900 mr-3">下载</button>
+                        ${state.currentUser ? `<button onclick="deleteDoc(${doc.id})" class="text-red-600 hover:text-red-900">删除</button>` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // --- Interaction Logic: Forms ---
+        function openCreateFormModal() {
+            document.getElementById('modal-create-form').classList.remove('hidden');
+        }
+
+        function submitNewForm() {
+            const title = document.getElementById('new-form-title').value;
+            const questionsStr = document.getElementById('new-form-questions').value;
+            
+            if (!title || !questionsStr) {
                 showToast('请填写完整信息', 'error');
                 return;
             }
 
-            const questions = questionsRaw.split('\n').filter(q => q.trim() !== '');
             const newForm = {
                 id: Date.now(),
                 title: title,
-                questions: questions,
+                questions: questionsStr.split(',').map(q => q.trim()),
                 responses: []
             };
 
-            state.data.forms.unshift(newForm);
+            state.forms.unshift(newForm);
             saveData();
             renderForms();
+            closeModal('modal-create-form');
             
-            // Reset and close
+            // Reset inputs
             document.getElementById('new-form-title').value = '';
             document.getElementById('new-form-questions').value = '';
-            toggleCreateForm();
-            showToast('表单创建成功');
+            showToast('表单创建成功', 'success');
         }
 
-        function openFillForm(formId) {
-            const form = state.data.forms.find(f => f.id === formId);
-            if(!form) return;
-
-            // Simple prompt-like modal simulation using a dynamic modal overlay
-            const modalHtml = `
-                <div id="fill-form-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-                    <div class="relative p-6 border w-full max-w-lg shadow-lg rounded-xl bg-white m-4">
-                        <h3 class="text-xl font-bold text-gray-900 mb-4">${form.title}</h3>
-                        <form id="dynamic-fill-form" class="space-y-4">
-                            ${form.questions.map((q, idx) => `
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">${q}</label>
-                                    <input type="text" name="q_${idx}" required class="w-full border border-gray-300 rounded p-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                </div>
-                            `).join('')}
-                            <div class="flex justify-end gap-3 mt-6">
-                                <button type="button" onclick="document.getElementById('fill-form-modal').remove()" class="px-4 py-2 border rounded text-gray-700">取消</button>
-                                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">提交</button>
-                            </div>
-                        </form>
-                    </div>
+        function openFillFormModal(formId) {
+            state.activeFormId = formId;
+            const form = state.forms.find(f => f.id === formId);
+            document.getElementById('fill-form-title').textContent = form.title;
+            
+            const container = document.getElementById('fill-form-questions');
+            container.innerHTML = form.questions.map((q, index) => `
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">${q}</label>
+                    <input type="text" class="form-input w-full border border-gray-300 rounded-md p-2" data-index="${index}">
                 </div>
-            `;
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-            document.getElementById('dynamic-fill-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const response = {};
-                form.questions.forEach((q, idx) => {
-                    response[q] = formData.get(`q_${idx}`);
-                });
-                
-                form.responses.push(response);
-                saveData();
-                document.getElementById('fill-form-modal').remove();
-                showToast('提交成功');
-            });
+            `).join('');
+            
+            document.getElementById('modal-fill-form').classList.remove('hidden');
         }
 
-        // --- Module 2: Item Sharing Logic ---
-        function renderItems() {
-            const grid = document.getElementById('items-grid');
-            grid.innerHTML = '';
+        function submitFormResponse() {
+            const form = state.forms.find(f => f.id === state.activeFormId);
+            const inputs = document.querySelectorAll('#fill-form-questions input');
+            const answers = Array.from(inputs).map(input => input.value);
+            
+            if (answers.some(a => !a.trim())) {
+                showToast('请回答所有问题', 'error');
+                return;
+            }
 
-            state.data.items.forEach(item => {
-                const isAvailable = item.status === 'available';
-                const btnClass = isAvailable 
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed';
-                const btnText = isAvailable ? '申请借用' : '已借出';
-                const icon = isAvailable ? 'fa-hand-holding-hand' : 'fa-ban';
-
-                const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col';
-                card.innerHTML = `
-                    <div class="h-32 bg-gray-100 flex items-center justify-center text-gray-300">
-                        <i class="fa-solid fa-box text-6xl"></i>
-                    </div>
-                    <div class="p-4 flex-1 flex flex-col">
-                        <div class="flex justify-between items-start">
-                            <h3 class="font-bold text-gray-900">${item.name}</h3>
-                            <span class="text-xs text-gray-400">by ${item.owner}</span>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2 mb-4 flex-1">${item.desc}</p>
-                        <button onclick="borrowItem(${item.id})" ${!isAvailable ? 'disabled' : ''} class="w-full py-2 rounded-lg font-medium transition flex items-center justify-center gap-2 ${btnClass}">
-                            <i class="fa-solid ${icon}"></i> ${btnText}
-                        </button>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+            form.responses.push(answers);
+            saveData();
+            renderForms();
+            closeModal('modal-fill-form');
+            showToast('提交成功', 'success');
         }
 
-        function openAddItemModal() { document.getElementById('add-item-modal').classList.remove('hidden'); }
-        function closeAddItemModal() { document.getElementById('add-item-modal').classList.add('hidden'); }
+        // --- Interaction Logic: Materials ---
+        function openShareMaterialModal() {
+            document.getElementById('modal-share-material').classList.remove('hidden');
+        }
 
-        function addItem() {
-            const name = document.getElementById('item-name').value;
-            const desc = document.getElementById('item-desc').value;
-            if(!name) return showToast('请输入物品名称', 'error');
+        function submitNewItem() {
+            const name = document.getElementById('new-item-name').value;
+            const desc = document.getElementById('new-item-desc').value;
+            
+            if (!name) {
+                showToast('请输入物资名称', 'error');
+                return;
+            }
 
-            state.data.items.unshift({
+            state.items.unshift({
                 id: Date.now(),
-                name,
+                name: name,
                 desc: desc || '暂无描述',
-                owner: '我', // Simulation
+                owner: state.currentUser || '匿名同学',
                 status: 'available'
             });
+
             saveData();
-            renderItems();
-            closeAddItemModal();
-            document.getElementById('item-name').value = '';
-            document.getElementById('item-desc').value = '';
-            showToast('物资上架成功');
+            renderMaterials();
+            closeModal('modal-share-material');
+            
+            document.getElementById('new-item-name').value = '';
+            document.getElementById('new-item-desc').value = '';
+            showToast('物资上架成功', 'success');
         }
 
         function borrowItem(id) {
-            const item = state.data.items.find(i => i.id === id);
-            if(item && item.status === 'available') {
-                // Simulate process
-                if(confirm(`确定要向 ${item.owner} 申请借用 "${item.name}" 吗？`)) {
-                    item.status = 'borrowed';
-                    saveData();
-                    renderItems();
-                    showToast('借用申请已发送 (模拟)');
-                }
-            }
-        }
-
-        // --- Module 3: Coursework Logic ---
-        function renderCourseList() {
-            const list = document.getElementById('course-list');
-            list.innerHTML = '';
-
-            state.data.courses.forEach(course => {
-                const item = document.createElement('div');
-                const isActive = state.currentCourseId === course.id;
-                item.className = `p-3 rounded-lg cursor-pointer transition flex justify-between items-center ${isActive ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-gray-50 border border-transparent'}`;
-                item.onclick = () => selectCourse(course.id);
-                item.innerHTML = `
-                    <div>
-                        <div class="font-medium text-gray-800">${course.name}</div>
-                        <div class="text-xs text-gray-500">${course.teacher}</div>
-                    </div>
-                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
-                `;
-                list.appendChild(item);
-            });
-        }
-
-        function selectCourse(id) {
-            state.currentCourseId = id;
-            renderCourseList();
-            
-            const course = state.data.courses.find(c => c.id === id);
-            const detailPanel = document.getElementById('course-detail-panel');
-            const emptyState = document.getElementById('course-empty-state');
-
-            if(course) {
-                emptyState.classList.add('hidden');
-                detailPanel.classList.remove('hidden');
-                
-                document.getElementById('detail-course-name').textContent = course.name;
-                document.getElementById('detail-teacher-name').textContent = `授课教师: ${course.teacher}`;
-                
-                renderIntelList(course);
-            }
-        }
-
-        function renderIntelList(course) {
-            const container = document.getElementById('course-intel-list');
-            container.innerHTML = '';
-            
-            if(course.intel.length === 0) {
-                container.innerHTML = '<p class="text-sm text-gray-400 italic">暂无情报，快来上传第一条吧！</p>';
-                return;
-            }
-
-            course.intel.forEach(intel => {
-                const el = document.createElement('div');
-                el.className = 'bg-gray-50 p-3 rounded border border-gray-100';
-                el.innerHTML = `
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">${intel.type}</span>
-                        <span class="text-xs text-gray-400">${intel.date}</span>
-                    </div>
-                    <h5 class="font-bold text-gray-800 text-sm">${intel.title}</h5>
-                    <p class="text-sm text-gray-600 mt-1">${intel.content}</p>
-                `;
-                container.appendChild(el);
-            });
-        }
-
-        // Course Modals
-        function openAddCourseModal() { document.getElementById('add-course-modal').classList.remove('hidden'); }
-        function closeAddCourseModal() { document.getElementById('add-course-modal').classList.add('hidden'); }
-        function addCourse() {
-            const name = document.getElementById('course-name-input').value;
-            const teacher = document.getElementById('teacher-name-input').value;
-            if(!name || !teacher) return showToast('请填写完整', 'error');
-
-            state.data.courses.push({
-                id: Date.now(),
-                name,
-                teacher,
-                intel: []
-            });
-            saveData();
-            renderCourseList();
-            closeAddCourseModal();
-            document.getElementById('course-name-input').value = '';
-            document.getElementById('teacher-name-input').value = '';
-            showToast('课程主页创建成功');
-        }
-
-        function openUploadInfoModal() { 
-            if(!state.currentCourseId) return showToast('请先选择课程', 'error');
-            document.getElementById('upload-intel-modal').classList.remove('hidden'); 
-        }
-        function closeUploadInfoModal() { document.getElementById('upload-intel-modal').classList.add('hidden'); }
-        function uploadIntel() {
-            const type = document.getElementById('intel-type').value;
-            const title = document.getElementById('intel-title').value;
-            const content = document.getElementById('intel-content').value;
-            
-            if(!title || !content) return showToast('请填写完整', 'error');
-
-            const course = state.data.courses.find(c => c.id === state.currentCourseId);
-            if(course) {
-                const now = new Date();
-                const dateStr = `${now.getMonth()+1}-${now.getDate()} ${now.getHours()}:${now.getMinutes()}`;
-                
-                course.intel.unshift({
-                    type, title, content, date: dateStr
-                });
+            const item = state.items.find(i => i.id === id);
+            if (item) {
+                item.status = 'borrowed';
                 saveData();
-                renderIntelList(course);
-                closeUploadInfoModal();
-                document.getElementById('intel-title').value = '';
-                document.getElementById('intel-content').value = '';
-                showToast('情报上传成功');
+                renderMaterials();
+                showToast(`已申请借用：${item.name}，请联系 ${item.owner}`, 'success');
             }
         }
 
-        // LLM Simulation
-        function askLLM() {
-            const input = document.getElementById('llm-input');
-            const query = input.value.trim();
-            const responseArea = document.getElementById('llm-response-area');
-            const responseText = document.getElementById('llm-text');
-            const citations = document.getElementById('llm-citations');
-
-            if(!query) return;
-            if(!state.currentCourseId) return showToast('请先选择一门课程', 'error');
-
-            responseArea.classList.remove('hidden');
-            responseText.textContent = '正在思考...';
-            citations.classList.add('hidden');
-
-            // Simulate API delay
-            setTimeout(() => {
-                const course = state.data.courses.find(c => c.id === state.currentCourseId);
-                let answer = "";
-                let hasCitation = false;
-
-                // Simple keyword matching simulation
-                const lowerQuery = query.toLowerCase();
-                const relevantIntel = course.intel.filter(i => 
-                    i.title.includes(lowerQuery) || i.content.includes(lowerQuery) || i.type.includes(lowerQuery)
-                );
-
-                if(relevantIntel.length > 0) {
-                    answer = `根据课程情报，关于 "${query}" 的信息如下：\n`;
-                    relevantIntel.forEach((intel, idx) => {
-                        answer += `${idx+1}. [${intel.type}] ${intel.title}: ${intel.content}\n`;
-                    });
-                    hasCitation = true;
-                } else {
-                    answer = `暂时没有找到关于 "${query}" 的具体情报。建议查看课程公告或询问老师。`;
-                }
-
-                // Typing effect
-                responseText.textContent = '';
-                let i = 0;
-                const typeInterval = setInterval(() => {
-                    responseText.textContent += answer.charAt(i);
-                    i++;
-                    if(i >= answer.length) {
-                        clearInterval(typeInterval);
-                        if(hasCitation) {
-                            citations.classList.remove('hidden');
-                            citations.innerHTML = `<i class="fa-solid fa-quote-left mr-1"></i> 引用来源: ${course.name} 情报库`;
-                        }
-                    }
-                }, 30);
-
-            }, 1000);
+        // --- Interaction Logic: Docs ---
+        function openUploadDocModal() {
+            document.getElementById('modal-upload-doc').classList.remove('hidden');
         }
 
-        // --- Module 4: Documents Logic ---
-        function renderFiles() {
-            const tbody = document.getElementById('file-list-body');
-            const emptyMsg = document.getElementById('empty-files-msg');
-            tbody.innerHTML = '';
+        function submitNewDoc() {
+            const name = document.getElementById('new-doc-name').value;
+            const type = document.getElementById('new-doc-type').value;
+            const size = document.getElementById('new-doc-size').value;
 
-            if(state.data.files.length === 0) {
-                emptyMsg.classList.remove('hidden');
+            if (!name) {
+                showToast('请输入文件名', 'error');
                 return;
-            } else {
-                emptyMsg.classList.add('hidden');
             }
 
-            state.data.files.forEach(file => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 h-8 w-8 bg-gray-100 rounded flex items-center justify-center text-gray-500">
-                                <i class="fa-solid ${getFileIcon(file.type)}"></i>
-                            </div>
-                            <div class="ml-4">
-                                <div class="text-sm font-medium text-gray-900">${file.name}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${file.type}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${file.size}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${file.uploader}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button onclick="downloadFile('${file.name}')" class="text-indigo-600 hover:text-indigo-900"><i class="fa-solid fa-download"></i> 下载</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+            state.docs.unshift({
+                id: Date.now(),
+                name: name,
+                type: type,
+                size: size + 'MB',
+                uploader: state.currentUser || 'Admin'
             });
+
+            saveData();
+            renderDocs();
+            closeModal('modal-upload-doc');
+            
+            document.getElementById('new-doc-name').value = '';
+            showToast('文档上传成功', 'success');
         }
 
-        function getFileIcon(type) {
-            if(type.includes('PDF')) return 'fa-file-pdf';
-            if(type.includes('Word') || type.includes('Doc')) return 'fa-file-word';
-            if(type.includes('Excel') || type.includes('xls')) return 'fa-file-excel';
-            if(type.includes('Zip') || type.includes('Rar')) return 'fa-file-zipper';
-            return 'fa-file';
-        }
-
-        function handleFileUpload(input) {
-            if(input.files && input.files[0]) {
-                const file = input.files[0];
-                // Simulate upload
-                setTimeout(() => {
-                    const newFile = {
-                        id: Date.now(),
-                        name: file.name,
-                        type: file.name.split('.').pop().toUpperCase() || 'FILE',
-                        size: (file.size / 1024).toFixed(1) + 'KB',
-                        uploader: '我'
-                    };
-                    state.data.files.unshift(newFile);
-                    saveData();
-                    renderFiles();
-                    showToast('文件上传成功');
-                    input.value = ''; // Reset
-                }, 800);
+        function deleteDoc(id) {
+            if(confirm('确定要删除这个文档吗？')) {
+                state.docs = state.docs.filter(d => d.id !== id);
+                saveData();
+                renderDocs();
+                showToast('文档已删除', 'info');
             }
         }
 
-        function downloadFile(filename) {
-            showToast(`开始下载 ${filename}...`, 'info');
+        function downloadDoc(name) {
+            showToast(`正在下载 ${name}...`, 'info');
+            // Mock download behavior
         }
 
-        // --- Init ---
-        window.addEventListener('DOMContentLoaded', () => {
-            renderForms();
-            renderItems();
-            renderCourseList();
-            renderFiles();
-        });
+        // --- Interaction Logic: Chat (LLM Simulation) ---
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
 
+            // Add User Message
+            addMessage(text, 'user');
+            input.value = '';
+
+            // Simulate Bot Thinking
+            setTimeout(() => {
+                const response = generateLLMResponse(text);
+                addMessage(response, 'bot');
+            }, 600);
+        }
+
+        function addMessage(text, type) {
+            const container = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.textContent = text;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function generateLLMResponse(query) {
+            query = query.toLowerCase();
+            
+            // Simple keyword matching logic
+            if (query.includes('作业') || query.includes('交')) {
+                const tasks = [];
+                state.courses.forEach(c => {
+                    c.info.forEach(i => {
+                        if (i.type === '作业') tasks.push(`${c.name}: ${i.title} (${i.date})`);
+                    });
+                });
+                return tasks.length > 0 ? `根据查询，有以下作业：\n${tasks.join('\n')}` : '目前没有待交的作业记录。';
+            }
+            
+            if (query.includes('考试') || query.includes('复习')) {
+                const exams = [];
+                state.courses.forEach(c => {
+                    c.info.forEach(i => {
+                        if (i.type === '考试') exams.push(`${c.name}: ${i.title} (${i.date})`);
+                    });
+                });
+                return exams.length > 0 ? `即将到来的考试：\n${exams.join('\n')}` : '近期没有考试安排。';
+            }
+
+            if (query.includes('web') || query.includes('前端') || query.includes('html')) {
+                const webCourse = state.courses.find(c => c.name.includes('Web'));
+                if (webCourse && webCourse.info.length > 0) {
+                    return `关于Web前端开发：\n${webCourse.info.map(i => `${i.type}: ${i.title}`).join('\n')}`;
+                }
+                return '暂时没有Web前端相关的具体情报。';
+            }
+
+            return '抱歉，我没有理解您的问题。您可以尝试询问关于“作业”、“考试”或具体课程名称（如Web前端）的信息。';
+        }
+
+        // --- Utilities ---
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = '';
+            if (type === 'success') icon = '<i class="fa-solid fa-check-circle"></i>';
+            if (type === 'error') icon = '<i class="fa-solid fa-circle-exclamation"></i>';
+            if (type === 'info') icon = '<i class="fa-solid fa-circle-info"></i>';
+
+            toast.innerHTML = `<span>${icon} &nbsp; ${message}</span>`;
+            
+            container.appendChild(toast);
+
+            // Auto remove
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease-out reverse forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('fixed')) {
+                event.target.classList.add('hidden');
+            }
+        }
     </script>
 </body>
 </html>
