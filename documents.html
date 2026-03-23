@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>文档资源共享 - 班务网页</title>
+<!-- Tailwind CSS -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/0915/3.4.17.js"></script>
+<!-- Font Awesome -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/js/all.min.js"></script>
+<link href="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/css/fontawesome.min.css" rel="stylesheet"/>
+<!-- ECharts -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/cdn-staticfile-net/echarts/5.4.3/echarts.min.js"></script>
+<!-- Axios -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/cdn-staticfile-net/axios/1.6.7/axios.min.js"></script>
+<style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* File Type Icons Colors */
+        .icon-pdf { color: #ef4444; }
+        .icon-word { color: #3b82f6; }
+        .icon-excel { color: #22c55e; }
+        .icon-ppt { color: #f97316; }
+        .icon-image { color: #a855f7; }
+        .icon-default { color: #64748b; }
+
+        /* Drag and Drop Zone */
+        .drag-active {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+
+        /* Toast Animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-enter {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+<!-- Navigation -->
+<nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between h-16">
+<div class="flex items-center">
+<a class="flex-shrink-0 flex items-center gap-2" href="index.html">
+<i class="fa-solid fa-book-open text-blue-600 text-2xl"></i>
+<span class="font-bold text-xl text-gray-900">统双班务</span>
+</a>
+<div class="hidden md:ml-10 md:flex md:space-x-8">
+<a class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" href="index.html">首页</a>
+<a class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" href="tasks.html">任务</a>
+<a class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" href="documents.html">文档</a>
+<a class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" href="courses.html">课程</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<!-- Role Switcher for Demo -->
+<div class="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+<span class="text-xs text-gray-500 px-2">当前身份模拟:</span>
+<select class="text-sm bg-transparent border-none focus:ring-0 font-medium text-blue-700 cursor-pointer" id="roleSelector" onchange="switchRole(this.value)">
+<option value="student">普通同学</option>
+<option value="monitor">班委</option>
+<option value="admin">开发者</option>
+<option value="guest">游客</option>
+</select>
+</div>
+<div class="relative">
+<img alt="Avatar" class="h-8 w-8 rounded-full bg-gray-300 object-cover" src="https://ui-avatars.com/api/?name=User&amp;background=random"/>
+</div>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+<!-- Statistics Section -->
+<section class="mb-8">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+<!-- Stat Cards -->
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+<div>
+<p class="text-sm text-gray-500">总文档数</p>
+<p class="text-2xl font-bold text-gray-900" id="statTotalDocs">0</p>
+</div>
+<div class="p-3 bg-blue-50 rounded-lg text-blue-600">
+<i class="fa-solid fa-file-lines text-xl"></i>
+</div>
+</div>
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+<div>
+<p class="text-sm text-gray-500">本月下载</p>
+<p class="text-2xl font-bold text-gray-900" id="statMonthDownloads">0</p>
+</div>
+<div class="p-3 bg-green-50 rounded-lg text-green-600">
+<i class="fa-solid fa-download text-xl"></i>
+</div>
+</div>
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+<div>
+<p class="text-sm text-gray-500">存储空间</p>
+<p class="text-2xl font-bold text-gray-900" id="statStorage">0 MB</p>
+</div>
+<div class="p-3 bg-purple-50 rounded-lg text-purple-600">
+<i class="fa-solid fa-hard-drive text-xl"></i>
+</div>
+</div>
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+<div>
+<p class="text-sm text-gray-500">待清理</p>
+<p class="text-2xl font-bold text-gray-900" id="statCleanup">0</p>
+</div>
+<div class="p-3 bg-orange-50 rounded-lg text-orange-600">
+<i class="fa-solid fa-broom text-xl"></i>
+</div>
+</div>
+</div>
+<!-- Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 lg:col-span-2">
+<h3 class="text-lg font-semibold text-gray-800 mb-4">上传趋势分析</h3>
+<div id="trendChart" style="width: 100%; height: 300px;"></div>
+</div>
+<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+<h3 class="text-lg font-semibold text-gray-800 mb-4">课程文档分布</h3>
+<div id="distChart" style="width: 100%; height: 300px;"></div>
+</div>
+</div>
+</section>
+<!-- Toolbar & Filters -->
+<section class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+<!-- Search -->
+<div class="relative w-full md:w-64">
+<input class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors" id="searchInput" placeholder="搜索标题、课程或上传者..." type="text"/>
+<i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-400"></i>
+</div>
+<!-- Filters -->
+<select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white" id="filterCourse">
+<option value="all">所有课程</option>
+<option value="高等数学">高等数学</option>
+<option value="线性代数">线性代数</option>
+<option value="英语">英语</option>
+</select>
+<select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white" id="filterType">
+<option value="all">所有类型</option>
+<option value="课件">课件</option>
+<option value="笔记">笔记</option>
+<option value="真题">真题</option>
+<option value="工具">工具</option>
+</select>
+<select class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 bg-white" id="sortOrder">
+<option value="newest">最新上传</option>
+<option value="downloads">下载最多</option>
+<option value="size">文件大小</option>
+</select>
+</div>
+<div class="flex items-center gap-3 w-full md:w-auto justify-end">
+<button class="hidden px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium transition-colors" id="batchDeleteBtn">
+<i class="fa-solid fa-trash mr-1"></i> 批量删除
+                </button>
+<button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium shadow-sm transition-colors flex items-center gap-2" id="uploadBtn">
+<i class="fa-solid fa-cloud-arrow-up"></i> 上传文档
+                </button>
+</div>
+</section>
+<!-- Document Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="documentGrid">
+<!-- Documents will be injected here via JS -->
+</section>
+<!-- Empty State (Hidden by default) -->
+<div class="hidden flex flex-col items-center justify-center py-20 text-center" id="emptyState">
+<div class="bg-gray-100 p-6 rounded-full mb-4">
+<i class="fa-regular fa-folder-open text-4xl text-gray-400"></i>
+</div>
+<h3 class="text-lg font-medium text-gray-900">没有找到相关文档</h3>
+<p class="text-gray-500 mt-1">尝试调整筛选条件或上传新文档</p>
+</div>
+</main>
+<!-- Upload Modal -->
+<div aria-labelledby="modal-title" aria-modal="true" class="fixed inset-0 z-50 hidden" id="uploadModal" role="dialog">
+<div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm"></div>
+<div class="fixed inset-0 z-10 overflow-y-auto">
+<div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+<div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+<div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+<div class="sm:flex sm:items-start">
+<div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+<h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4" id="modal-title">上传新文档</h3>
+<!-- Drag & Drop Zone -->
+<div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors mb-4 relative" id="dropZone">
+<input accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.png" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" id="fileInput" type="file"/>
+<div id="dropZoneContent">
+<i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-400 mb-2"></i>
+<p class="text-sm text-gray-600">点击或拖拽文件到此处</p>
+<p class="text-xs text-gray-400 mt-1">支持 PDF, Word, Excel, PPT, 图片</p>
+</div>
+<!-- File Preview -->
+<div class="hidden flex items-center justify-between bg-gray-50 p-3 rounded border border-gray-200" id="filePreview">
+<div class="flex items-center gap-2 overflow-hidden">
+<i class="fa-solid fa-file text-gray-500"></i>
+<span class="text-sm font-medium truncate text-gray-700 max-w-[200px]" id="fileName">filename.pdf</span>
+<span class="text-xs text-gray-400" id="fileSize">(0 MB)</span>
+</div>
+<button class="text-gray-400 hover:text-red-500" id="removeFileBtn">
+<i class="fa-solid fa-times"></i>
+</button>
+</div>
+</div>
+<!-- Form Fields -->
+<div class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-gray-700">文档标题</label>
+<input class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2" id="docTitle" placeholder="输入文档标题" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-sm font-medium text-gray-700">所属课程</label>
+<select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 bg-white" id="docCourse">
+<option value="高等数学">高等数学</option>
+<option value="线性代数">线性代数</option>
+<option value="英语">英语</option>
+</select>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700">分类标签</label>
+<select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 bg-white" id="docCategory">
+<option value="课件">课件</option>
+<option value="笔记">笔记</option>
+<option value="真题">真题</option>
+<option value="工具">工具</option>
+</select>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700">版本号</label>
+<div class="flex items-center gap-2">
+<input class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2" id="docVersion" placeholder="例如: v1.0" type="text"/>
+<span class="text-xs text-orange-500 hidden" id="versionWarning"><i class="fa-solid fa-triangle-exclamation"></i> 检测到同名文件</span>
+</div>
+<p class="text-xs text-gray-500 mt-1">如果存在同名文件，建议修改版本号。</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+<button class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto" id="confirmUploadBtn" type="button">开始上传</button>
+<button class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto" id="cancelUploadBtn" type="button">取消</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Version History Modal -->
+<div aria-labelledby="modal-title" aria-modal="true" class="fixed inset-0 z-50 hidden" id="versionModal" role="dialog">
+<div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm"></div>
+<div class="fixed inset-0 z-10 overflow-y-auto">
+<div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+<div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+<div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+<h3 class="text-lg font-semibold leading-6 text-gray-900 mb-4">版本历史</h3>
+<ul class="space-y-3" id="versionList">
+<!-- Version items injected here -->
+</ul>
+</div>
+<div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+<button class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto" onclick="closeVersionModal()" type="button">关闭</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Toast Container -->
+<div class="fixed top-20 right-5 z-50 flex flex-col gap-2" id="toastContainer"></div>
+<script>
+        // --- Mock Data & Configuration ---
+        const CONFIG = {
+            maxFileSize: 10 * 1024 * 1024, // 10MB
+            apiBase: '/api/documents.js' // Mock API endpoint
+        };
+
+        const CURRENT_USER = {
+            id: 'u_001',
+            name: '张三',
+            role: 'student' // student, monitor, admin, guest
+        };
+
+        // Initial Data
+        let documents = [
+            {
+                doc_id: 'd_001',
+                course_id: '高等数学',
+                title: '微积分基础复习提纲',
+                file_info: {
+                    original_name: '微积分基础复习提纲.pdf',
+                    storage_path: 'https://oss.example.com/math/v1/calc.pdf',
+                    size: 2048000,
+                    version: 'v1.0'
+                },
+                category: '笔记',
+                uploader_id: 'u_002',
+                uploader_name: '李四',
+                download_count: 45,
+                is_important: true,
+                upload_time: '2026-03-20 10:00:00'
+            },
+            {
+                doc_id: 'd_002',
+                course_id: '英语',
+                title: '六级词汇高频表',
+                file_info: {
+                    original_name: '六级词汇高频表.xlsx',
+                    storage_path: 'https://oss.example.com/english/vocab.xlsx',
+                    size: 524000,
+                    version: 'v2.1'
+                },
+                category: '工具',
+                uploader_id: 'u_003',
+                uploader_name: '王五',
+                download_count: 120,
+                is_important: false,
+                upload_time: '2026-03-22 14:30:00'
+            },
+            {
+                doc_id: 'd_003',
+                course_id: '线性代数',
+                title: '第三章 矩阵运算课件',
+                file_info: {
+                    original_name: '第三章 矩阵运算.pptx',
+                    storage_path: 'https://oss.example.com/algebra/ch3.pptx',
+                    size: 5600000,
+                    version: 'v1.0'
+                },
+                category: '课件',
+                uploader_id: 'u_001',
+                uploader_name: '张三',
+                download_count: 12,
+                is_important: false,
+                upload_time: '2026-03-23 09:15:00'
+            },
+            {
+                doc_id: 'd_004',
+                course_id: '高等数学',
+                title: '2025期末真题解析',
+                file_info: {
+                    original_name: '2025期末真题解析.pdf',
+                    storage_path: 'https://oss.example.com/math/exam_2025.pdf',
+                    size: 1500000,
+                    version: 'v1.0'
+                },
+                category: '真题',
+                uploader_id: 'u_002',
+                uploader_name: '李四',
+                download_count: 89,
+                is_important: true,
+                upload_time: '2026-03-15 16:45:00'
+            }
+        ];
+
+        // --- State Management ---
+        let state = {
+            filterCourse: 'all',
+            filterType: 'all',
+            sortOrder: 'newest',
+            searchQuery: '',
+            selectedFile: null,
+            uploading: false
+        };
+
+        // --- Utility Functions ---
+        const formatSize = (bytes) => {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
+        const getFileIcon = (filename) => {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (['pdf'].includes(ext)) return 'fa-file-pdf icon-pdf';
+            if (['doc', 'docx'].includes(ext)) return 'fa-file-word icon-word';
+            if (['xls', 'xlsx'].includes(ext)) return 'fa-file-excel icon-excel';
+            if (['ppt', 'pptx'].includes(ext)) return 'fa-file-powerpoint icon-ppt';
+            if (['jpg', 'png', 'jpeg', 'gif'].includes(ext)) return 'fa-file-image icon-image';
+            return 'fa-file icon-default';
+        };
+
+        const getCategoryIcon = (category) => {
+            const map = {
+                '课件': 'fa-chalkboard-user',
+                '笔记': 'fa-book',
+                '真题': 'fa-pen-to-square',
+                '工具': 'fa-screwdriver-wrench'
+            };
+            return map[category] || 'fa-file';
+        };
+
+        const showToast = (message, type = 'success') => {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-orange-500',
+                info: 'bg-blue-500'
+            };
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-times-circle',
+                warning: 'fa-exclamation-circle',
+                info: 'fa-info-circle'
+            };
+
+            toast.className = `${colors[type]} text-white px-4 py-3 rounded shadow-lg flex items-center gap-3 min-w-[300px] toast-enter`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type]}"></i>
+                <span class="text-sm font-medium">${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.5s, transform 0.5s';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        };
+
+        // --- Core Logic ---
+
+        // 1. Render Functions
+        const renderDocuments = () => {
+            const grid = document.getElementById('documentGrid');
+            const emptyState = document.getElementById('emptyState');
+            grid.innerHTML = '';
+
+            // Filter Logic
+            let filtered = documents.filter(doc => {
+                const matchCourse = state.filterCourse === 'all' || doc.course_id === state.filterCourse;
+                const matchType = state.filterType === 'all' || doc.category === state.filterType;
+                const searchLower = state.searchQuery.toLowerCase();
+                const matchSearch = doc.title.toLowerCase().includes(searchLower) || 
+                                    doc.uploader_name.toLowerCase().includes(searchLower) ||
+                                    doc.course_id.toLowerCase().includes(searchLower);
+                return matchCourse && matchType && matchSearch;
+            });
+
+            // Sort Logic
+            filtered.sort((a, b) => {
+                if (state.sortOrder === 'newest') return new Date(b.upload_time) - new Date(a.upload_time);
+                if (state.sortOrder === 'downloads') return b.download_count - a.download_count;
+                if (state.sortOrder === 'size') return b.file_info.size - a.file_info.size;
+                return 0;
+            });
+
+            // Important Pinning (Monitor/Admin feature)
+            if (CURRENT_USER.role !== 'guest') {
+                filtered.sort((a, b) => (b.is_important === a.is_important) ? 0 : b.is_important ? 1 : -1);
+            }
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filtered.forEach(doc => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow flex flex-col group';
+                    
+                    // Thumbnail / Icon Area
+                    const fileIconClass = getFileIcon(doc.file_info.original_name);
+                    
+                    // Permission Logic for Buttons
+                    const canDownload = CURRENT_USER.role !== 'guest';
+                    const canDelete = CURRENT_USER.role === 'monitor' || CURRENT_USER.role === 'admin' || doc.uploader_id === CURRENT_USER.id;
+                    const canEdit = CURRENT_USER.role === 'monitor' || CURRENT_USER.role === 'admin' || doc.uploader_id === CURRENT_USER.id;
+
+                    card.innerHTML = `
+                        <div class="h-32 bg-gray-50 flex items-center justify-center relative border-b border-gray-100">
+                            <i class="fa-solid ${fileIconClass} text-5xl opacity-80"></i>
+                            ${doc.is_important ? '<div class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded shadow-sm"><i class="fa-solid fa-star mr-1"></i>重要</div>' : ''}
+                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-5 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <button onclick="previewDoc('${doc.doc_id}')" class="bg-white text-gray-700 px-3 py-1 rounded-full text-sm shadow hover:bg-blue-50 hover:text-blue-600 transition-colors mr-2">
+                                    <i class="fa-regular fa-eye"></i> 预览
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 flex-grow flex flex-col">
+                            <div class="flex items-start justify-between mb-2">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                    <i class="fa-solid ${getCategoryIcon(doc.category)} mr-1"></i> ${doc.category}
+                                </span>
+                                <span class="text-xs text-gray-400">${formatSize(doc.file_info.size)}</span>
+                            </div>
+                            <h3 class="text-sm font-bold text-gray-900 mb-1 line-clamp-2" title="${doc.title}">${doc.title}</h3>
+                            <p class="text-xs text-gray-500 mb-3">${doc.course_id}</p>
+                            
+                            <div class="mt-auto pt-3 border-t border-gray-50 flex items-center justify-between text-xs text-gray-500">
+                                <div class="flex items-center gap-1">
+                                    <img src="https://ui-avatars.com/api/?name=${doc.uploader_name}&background=random&size=16" class="w-4 h-4 rounded-full">
+                                    <span>${doc.uploader_name}</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <i class="fa-solid fa-download"></i>
+                                    <span>${doc.download_count}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-4 py-2 flex justify-between items-center border-t border-gray-100">
+                            <span class="text-xs text-gray-400">${doc.upload_time.split(' ')[0]}</span>
+                            <div class="flex gap-2">
+                                ${canDownload ? `
+                                <button onclick="downloadDoc('${doc.doc_id}')" class="text-gray-500 hover:text-blue-600 transition-colors" title="下载">
+                                    <i class="fa-solid fa-download"></i>
+                                </button>` : ''}
+                                ${canEdit ? `
+                                <button onclick="editDoc('${doc.doc_id}')" class="text-gray-500 hover:text-green-600 transition-colors" title="编辑">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>` : ''}
+                                ${canDelete ? `
+                                <button onclick="deleteDoc('${doc.doc_id}')" class="text-gray-500 hover:text-red-600 transition-colors" title="删除">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>` : ''}
+                                <button onclick="showVersionHistory('${doc.title}')" class="text-gray-500 hover:text-purple-600 transition-colors" title="版本历史">
+                                    <i class="fa-solid fa-code-branch"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+            updateStats();
+        };
+
+        const updateStats = () => {
+            document.getElementById('statTotalDocs').innerText = documents.length;
+            
+            // Calculate Mock Storage
+            const totalBytes = documents.reduce((acc, doc) => acc + doc.file_info.size, 0);
+            document.getElementById('statStorage').innerText = formatSize(totalBytes);
+
+            // Mock Monthly Downloads (Sum of all downloads for simplicity in this demo)
+            const totalDownloads = documents.reduce((acc, doc) => acc + doc.download_count, 0);
+            document.getElementById('statMonthDownloads').innerText = totalDownloads;
+
+            // Mock Cleanup count (Old docs > 30 days)
+            const now = new Date('2026-03-23');
+            const oldDocs = documents.filter(d => {
+                const uploadDate = new Date(d.upload_time);
+                const diffTime = Math.abs(now - uploadDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                return diffDays > 30;
+            }).length;
+            document.getElementById('statCleanup').innerText = oldDocs;
+        };
+
+        const initCharts = () => {
+            // Trend Chart
+            const trendChart = echarts.init(document.getElementById('trendChart'));
+            trendChart.setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', boundaryGap: false, data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] },
+                yAxis: { type: 'value' },
+                series: [{
+                    name: '上传数',
+                    type: 'line',
+                    smooth: true,
+                    data: [2, 5, 3, 8, 4, 6, 2],
+                    areaStyle: { opacity: 0.1, color: '#3b82f6' },
+                    itemStyle: { color: '#3b82f6' }
+                }]
+            });
+
+            // Distribution Chart
+            const distChart = echarts.init(document.getElementById('distChart'));
+            const courseCounts = {};
+            documents.forEach(d => {
+                courseCounts[d.course_id] = (courseCounts[d.course_id] || 0) + 1;
+            });
+            
+            distChart.setOption({
+                tooltip: { trigger: 'item' },
+                legend: { bottom: '0%' },
+                series: [{
+                    name: '文档分布',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                    label: { show: false, position: 'center' },
+                    emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
+                    data: Object.keys(courseCounts).map(k => ({ value: courseCounts[k], name: k }))
+                }]
+            });
+
+            window.addEventListener('resize', () => {
+                trendChart.resize();
+                distChart.resize();
+            });
+        };
+
+        // 2. Interaction Logic
+        
+        // Filter Event Listeners
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            state.searchQuery = e.target.value;
+            renderDocuments();
+        });
+        document.getElementById('filterCourse').addEventListener('change', (e) => {
+            state.filterCourse = e.target.value;
+            renderDocuments();
+        });
+        document.getElementById('filterType').addEventListener('change', (e) => {
+            state.filterType = e.target.value;
+            renderDocuments();
+        });
+        document.getElementById('sortOrder').addEventListener('change', (e) => {
+            state.sortOrder = e.target.value;
+            renderDocuments();
+        });
+
+        // Upload Modal Logic
+        const uploadModal = document.getElementById('uploadModal');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+        const confirmUploadBtn = document.getElementById('confirmUploadBtn');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        const openUploadModal = () => {
+            if (CURRENT_USER.role === 'guest') {
+                showToast('游客无权上传文档', 'error');
+                return;
+            }
+            uploadModal.classList.remove('hidden');
+        };
+
+        const closeUploadModal = () => {
+            uploadModal.classList.add('hidden');
+            resetUploadForm();
+        };
+
+        const resetUploadForm = () => {
+            state.selectedFile = null;
+            document.getElementById('filePreview').classList.add('hidden');
+            document.getElementById('dropZoneContent').classList.remove('hidden');
+            document.getElementById('docTitle').value = '';
+            document.getElementById('docVersion').value = '';
+            document.getElementById('versionWarning').classList.add('hidden');
+            fileInput.value = '';
+        };
+
+        uploadBtn.addEventListener('click', openUploadModal);
+        cancelUploadBtn.addEventListener('click', closeUploadModal);
+
+        // File Selection & Duplicate Check
+        const handleFileSelect = (file) => {
+            if (file.size > CONFIG.maxFileSize) {
+                showToast(`文件大小超过限制 (${formatSize(CONFIG.maxFileSize)})`, 'error');
+                return;
+            }
+
+            state.selectedFile = file;
+            document.getElementById('fileName').innerText = file.name;
+            document.getElementById('fileSize').innerText = `(${formatSize(file.size)})`;
+            document.getElementById('filePreview').classList.remove('hidden');
+            document.getElementById('dropZoneContent').classList.add('hidden');
+            
+            // Auto-fill title
+            const titleWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            document.getElementById('docTitle').value = titleWithoutExt;
+
+            // Duplicate Check Logic
+            checkDuplicate(file.name);
+        };
+
+        const checkDuplicate = (filename) => {
+            const course = document.getElementById('docCourse').value;
+            // Simple check: does filename exist in this course?
+            const exists = documents.some(d => 
+                d.course_id === course && 
+                d.file_info.original_name === filename
+            );
+
+            if (exists) {
+                document.getElementById('versionWarning').classList.remove('hidden');
+                // Suggest version
+                const existingDoc = documents.find(d => d.course_id === course && d.file_info.original_name === filename);
+                const oldVer = existingDoc.file_info.version;
+                // Simple logic to increment version string (very basic)
+                const newVer = 'v' + (parseInt(oldVer.replace('v', '')) + 1);
+                document.getElementById('docVersion').value = newVer;
+                showToast('检测到同名文件，建议更新版本号', 'warning');
+            } else {
+                document.getElementById('versionWarning').classList.add('hidden');
+                document.getElementById('docVersion').value = 'v1.0';
+            }
+        };
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+        });
+
+        // Re-check duplicate when course changes
+        document.getElementById('docCourse').addEventListener('change', () => {
+            if (state.selectedFile) checkDuplicate(state.selectedFile.name);
+        });
+
+        // Drag and Drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-active');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-active'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-active');
+            if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
+        });
+
+        document.getElementById('removeFileBtn').addEventListener('click', (e) => {
+            e.stopPropagation(); // prevent opening file dialog
+            resetUploadForm();
+        });
+
+        // Confirm Upload
+        confirmUploadBtn.addEventListener('click', () => {
+            if (!state.selectedFile) {
+                showToast('请先选择文件', 'warning');
+                return;
+            }
+            const title = document.getElementById('docTitle').value;
+            if (!title) {
+                showToast('请输入文档标题', 'warning');
+                return;
+            }
+
+            // Simulate API Call
+            const btn = confirmUploadBtn;
+            const originalText = btn.innerText;
+            btn.innerText = '上传中...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                const newDoc = {
+                    doc_id: 'd_' + Date.now(),
+                    course_id: document.getElementById('docCourse').value,
+                    title: title,
+                    file_info: {
+                        original_name: state.selectedFile.name,
+                        storage_path: 'https://oss.example.com/mock/' + state.selectedFile.name, // Mock URL
+                        size: state.selectedFile.size,
+                        version: document.getElementById('docVersion').value || 'v1.0'
+                    },
+                    category: document.getElementById('docCategory').value,
+                    uploader_id: CURRENT_USER.id,
+                    uploader_name: CURRENT_USER.name,
+                    download_count: 0,
+                    is_important: false,
+                    upload_time: new Date().toISOString().replace('T', ' ').substring(0, 19)
+                };
+
+                documents.unshift(newDoc); // Add to top
+                renderDocuments();
+                closeUploadModal();
+                showToast('文档上传成功！', 'success');
+                
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }, 1000);
+        });
+
+        // 3. Document Actions
+        window.downloadDoc = (id) => {
+            const doc = documents.find(d => d.doc_id === id);
+            if (doc) {
+                // Simulate download
+                doc.download_count++;
+                renderDocuments();
+                showToast(`开始下载: ${doc.title}`, 'info');
+                // In real app: window.location.href = doc.file_info.storage_path;
+            }
+        };
+
+        window.deleteDoc = (id) => {
+            if (confirm('确定要删除这个文档吗？此操作无法撤销。')) {
+                documents = documents.filter(d => d.doc_id !== id);
+                renderDocuments();
+                showToast('文档已删除', 'success');
+            }
+        };
+
+        window.editDoc = (id) => {
+            const doc = documents.find(d => d.doc_id === id);
+            if (doc) {
+                // For simplicity, we just prompt title edit in this demo
+                // In a real app, this would open the edit modal
+                const newTitle = prompt("修改文档标题:", doc.title);
+                if (newTitle && newTitle.trim() !== "") {
+                    doc.title = newTitle;
+                    renderDocuments();
+                    showToast('文档信息已更新', 'success');
+                }
+            }
+        };
+
+        window.previewDoc = (id) => {
+            const doc = documents.find(d => d.doc_id === id);
+            showToast(`正在打开预览: ${doc.title}`, 'info');
+            // Implement actual preview logic here (e.g., open new tab with PDF viewer)
+        };
+
+        window.showVersionHistory = (title) => {
+            const modal = document.getElementById('versionModal');
+            const list = document.getElementById('versionList');
+            list.innerHTML = '';
+            
+            // Mock versions based on current doc + fake history
+            const versions = [
+                { ver: 'v1.0', date: '2026-03-10', uploader: '李四' },
+                { ver: 'v1.1', date: '2026-03-15', uploader: '王五' },
+                { ver: 'v2.0', date: '2026-03-23', uploader: '张三' }
+            ];
+
+            versions.forEach(v => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-100';
+                li.innerHTML = `
+                    <div>
+                        <span class="font-bold text-gray-800">${v.ver}</span>
+                        <span class="text-xs text-gray-500 ml-2">${v.date}</span>
+                    </div>
+                    <div class="text-xs text-gray-500">${v.uploader}</div>
+                `;
+                list.appendChild(li);
+            });
+
+            modal.classList.remove('hidden');
+        };
+
+        window.closeVersionModal = () => {
+            document.getElementById('versionModal').classList.add('hidden');
+        };
+
+        // 4. Role Switching (Demo Feature)
+        window.switchRole = (role) => {
+            CURRENT_USER.role = role;
+            showToast(`已切换身份为: ${role}`, 'info');
+            
+            // Toggle Upload Button visibility
+            const uploadBtn = document.getElementById('uploadBtn');
+            if (role === 'guest') {
+                uploadBtn.classList.add('hidden');
+            } else {
+                uploadBtn.classList.remove('hidden');
+            }
+
+            renderDocuments(); // Re-render to update permission-based buttons
+        };
+
+        // --- Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            renderDocuments();
+            initCharts();
+        });
+
+    </script>
+</body>
+</html>

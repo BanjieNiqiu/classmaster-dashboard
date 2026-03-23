@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>统双班务 - 课程情报与作业查询</title>
+<!-- External Libraries -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/0915/3.4.17.js"></script>
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/js/all.min.js"></script>
+<link href="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/css/fontawesome.min.css" rel="stylesheet"/>
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/cdn-staticfile-net/axios/1.6.7/axios.min.js"></script>
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/cdn-staticfile-net/echarts/5.4.3/echarts.min.js"></script>
+<!-- Custom Styles -->
+<style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes pulse-dot {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #3b82f6;
+            margin: 0 2px;
+            animation: pulse-dot 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        /* Utility */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        /* Toast Container */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+<!-- Toast Notification Container -->
+<div id="toast-container"></div>
+<!-- Header Navigation -->
+<header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shadow-sm z-20 shrink-0">
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
+<i class="fa-solid fa-graduation-cap"></i>
+</div>
+<h1 class="text-xl font-bold text-slate-800 tracking-tight">统双班务系统</h1>
+<nav class="hidden md:flex ml-8 gap-1">
+<a class="px-3 py-2 text-slate-500 hover:text-blue-600 rounded-md transition-colors" href="index.html">首页</a>
+<a class="px-3 py-2 bg-blue-50 text-blue-600 font-medium rounded-md transition-colors" href="courses.html">课程情报</a>
+<a class="px-3 py-2 text-slate-500 hover:text-blue-600 rounded-md transition-colors" href="tasks.html">任务中心</a>
+<a class="px-3 py-2 text-slate-500 hover:text-blue-600 rounded-md transition-colors" href="items.html">物品管理</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<!-- Role Switcher for Demo -->
+<div class="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+<span class="text-xs text-slate-500 px-2">当前角色:</span>
+<select class="bg-transparent text-sm font-medium text-slate-700 focus:outline-none cursor-pointer" id="role-selector">
+<option value="student">普通同学</option>
+<option value="monitor">班委</option>
+<option value="admin">开发者</option>
+<option value="guest">游客</option>
+</select>
+</div>
+<div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-slate-300">
+<img alt="Avatar" class="w-full h-full object-cover" src="https://picsum.photos/seed/user123/100/100"/>
+</div>
+</div>
+</header>
+<!-- Main Content Layout -->
+<div class="flex flex-1 overflow-hidden">
+<!-- Left Sidebar: Course List -->
+<aside class="w-80 bg-white border-r border-slate-200 flex flex-col shrink-0 transition-all duration-300 transform" id="course-sidebar">
+<div class="p-4 border-b border-slate-100">
+<div class="relative mb-3">
+<i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+<input class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" id="course-search" placeholder="搜索课程或教师..." type="text"/>
+</div>
+<div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+<button class="semester-filter active px-3 py-1 text-xs font-medium rounded-full bg-blue-600 text-white whitespace-nowrap transition-colors" data-semester="all">全部学期</button>
+<button class="semester-filter px-3 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 whitespace-nowrap transition-colors" data-semester="2025-Spring">2025-Spring</button>
+<button class="semester-filter px-3 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 whitespace-nowrap transition-colors" data-semester="2024-Fall">2024-Fall</button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-3 space-y-2" id="course-list-container">
+<!-- Course Cards will be injected here -->
+</div>
+</aside>
+<!-- Center Area: Course Details & Intel -->
+<main class="flex-1 flex flex-col min-w-0 bg-slate-50 relative">
+<!-- Course Header -->
+<div class="bg-white border-b border-slate-200 p-6 shadow-sm shrink-0 z-10" id="course-header">
+<div class="flex justify-between items-start">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700" id="detail-course-code">CS101</span>
+<span class="text-xs text-slate-500" id="detail-semester">2025-Spring</span>
+</div>
+<h2 class="text-2xl font-bold text-slate-800 mb-2" id="detail-course-name">加载中...</h2>
+<p class="text-slate-600 text-sm flex items-center gap-4">
+<span><i class="fa-solid fa-chalkboard-user mr-1.5 text-slate-400"></i><span id="detail-teacher">--</span></span>
+<span><i class="fa-solid fa-clock mr-1.5 text-slate-400"></i><span id="detail-time">--</span></span>
+<span><i class="fa-solid fa-location-dot mr-1.5 text-slate-400"></i><span id="detail-location">--</span></span>
+</p>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors border border-slate-200" onclick="toggleStats()">
+<i class="fa-solid fa-chart-pie mr-1"></i> 统计
+                        </button>
+<button class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm shadow-blue-200" id="btn-post-intel" onclick="openPostModal()">
+<i class="fa-solid fa-plus mr-1"></i> 发布情报
+                        </button>
+</div>
+</div>
+</div>
+<!-- Stats Panel (Hidden by default) -->
+<div class="hidden absolute top-20 left-6 right-6 bg-white rounded-xl shadow-lg border border-slate-200 p-6 z-20 animate-fade-in" id="stats-panel">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-bold text-slate-700">数据统计看板</h3>
+<button class="text-slate-400 hover:text-slate-600" onclick="toggleStats()"><i class="fa-solid fa-xmark"></i></button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-64">
+<div class="w-full h-full" id="chart-activity"></div>
+<div class="w-full h-full" id="chart-distribution"></div>
+</div>
+</div>
+<!-- Intel Tabs & Content -->
+<div class="flex-1 overflow-hidden flex flex-col p-6">
+<!-- Tabs -->
+<div class="flex gap-6 border-b border-slate-200 mb-4 shrink-0">
+<button class="intel-tab active pb-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600 transition-colors" data-filter="all">全部情报</button>
+<button class="intel-tab pb-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors" data-filter="homework">作业通知</button>
+<button class="intel-tab pb-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors" data-filter="exam">考试安排</button>
+<button class="intel-tab pb-2 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors" data-filter="notice">重要通知</button>
+</div>
+<!-- Intel Timeline -->
+<div class="flex-1 overflow-y-auto pr-2 relative" id="intel-timeline">
+<!-- Vertical Line -->
+<div class="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-200"></div>
+<!-- Intel Items Container -->
+<div class="space-y-6 pl-10" id="intel-list">
+<!-- Intel Items injected here -->
+</div>
+</div>
+</div>
+</main>
+<!-- Right Sidebar: LLM AI Assistant -->
+<aside class="w-96 bg-white border-l border-slate-200 flex flex-col shrink-0 transition-all duration-300" id="ai-sidebar">
+<div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-md">
+<i class="fa-solid fa-robot"></i>
+</div>
+<div>
+<h3 class="font-bold text-slate-800 text-sm">AI 助手</h3>
+<p class="text-xs text-green-600 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> 在线</p>
+</div>
+</div>
+<button class="text-slate-400 hover:text-slate-600 text-sm" onclick="clearChatHistory()" title="清空历史">
+<i class="fa-solid fa-trash-can"></i>
+</button>
+</div>
+<!-- Chat History -->
+<div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50" id="chat-history">
+<!-- Welcome Message -->
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shrink-0">
+<i class="fa-solid fa-robot text-xs"></i>
+</div>
+<div class="bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700 max-w-[85%]">
+                        你好！我是你的课程情报助手。你可以问我：
+                        <ul class="list-disc list-inside mt-1 text-slate-500 text-xs space-y-1">
+<li>"这周高数有什么作业？"</li>
+<li>"什么时候期末考试？"</li>
+<li>"查找关于线性代数的课件"</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Chat Input -->
+<div class="p-4 border-t border-slate-200 bg-white">
+<form class="relative" id="chat-form">
+<input autocomplete="off" class="w-full pl-4 pr-10 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" id="chat-input" placeholder="输入问题，例如：下周的截止日期..." type="text"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center transition-colors shadow-sm" type="submit">
+<i class="fa-solid fa-paper-plane text-xs"></i>
+</button>
+</form>
+<div class="text-center mt-2">
+<span class="text-[10px] text-slate-400">AI生成内容仅供参考，请以课程公告为准</span>
+</div>
+</div>
+</aside>
+</div>
+<!-- Modal: Post/Edit Intel -->
+<dialog class="rounded-xl shadow-2xl p-0 w-full max-w-lg backdrop:bg-slate-900/50 backdrop:backdrop-blur-sm open:animate-fade-in" id="intel-modal">
+<div class="bg-white rounded-xl overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+<h3 class="font-bold text-slate-800" id="modal-title">发布课程情报</h3>
+<button class="text-slate-400 hover:text-slate-600" onclick="closePostModal()"><i class="fa-solid fa-xmark"></i></button>
+</div>
+<form class="p-6 space-y-4" id="intel-form">
+<input id="intel-id" type="hidden"/>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">情报类型</label>
+<select class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" id="intel-type">
+<option value="homework">作业通知</option>
+<option value="exam">考试安排</option>
+<option value="notice">重要通知</option>
+<option value="resource">课件资料</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">标题</label>
+<input class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" id="intel-title" placeholder="简短描述情报内容" required="" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">详细描述</label>
+<textarea class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" id="intel-content" placeholder="输入详细内容..." required="" rows="3"></textarea>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">截止时间 (可选)</label>
+<input class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" id="intel-deadline" type="datetime-local"/>
+</div>
+<div>
+<label class="block text-xs font-medium text-slate-500 mb-1">来源链接 (可选)</label>
+<input class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" id="intel-source" placeholder="https://..." type="url"/>
+</div>
+</div>
+<div class="pt-2 flex justify-end gap-3">
+<button class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onclick="closePostModal()" type="button">取消</button>
+<button class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm" type="submit">发布</button>
+</div>
+</form>
+</div>
+</dialog>
+<!-- JavaScript Logic -->
+<script>
+        // --- Mock Data ---
+        const MOCK_USER = {
+            id: 'u001',
+            name: '张三',
+            role: 'student' // student, monitor, admin, guest
+        };
+
+        const MOCK_COURSES = [
+            { id: 'MA202', name: '高等数学II', code: 'MA202', teacher: '王教授', semester: '2025-Spring', credits: 4.0, time: '周一 1-2节', location: '教一-101' },
+            { id: 'CS205', name: '数据结构与算法', code: 'CS205', teacher: '李博士', semester: '2025-Spring', credits: 3.5, time: '周二 3-4节', location: '计楼-305' },
+            { id: 'PH101', name: '大学物理B', code: 'PH101', teacher: '赵讲师', semester: '2024-Fall', credits: 3.0, time: '周三 5-6节', location: '理楼-202' },
+            { id: 'EN102', name: '学术英语II', code: 'EN102', teacher: 'Smith', semester: '2025-Spring', credits: 2.0, time: '周四 7-8节', location: '外语馆-404' }
+        ];
+
+        let MOCK_INTEL = [
+            { 
+                id: 'i001', course_id: 'MA202', type: 'homework', title: '第三章习题 3.1 - 3.5', 
+                content: '完成课本第三章课后习题，需手写提交至学习委员处。', 
+                deadline: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 days later
+                source_url: '', upvotes: 12, verified: true, created_at: new Date(Date.now() - 3600000).toISOString(), author_id: 'u002' 
+            },
+            { 
+                id: 'i002', course_id: 'CS205', type: 'exam', title: '期中考试安排', 
+                content: '期中考试定于第8周周五下午进行，范围涵盖链表、栈和队列。', 
+                deadline: '', source_url: 'http://exam.edu', upvotes: 45, verified: true, created_at: new Date(Date.now() - 86400000 * 3).toISOString(), author_id: 'u003' 
+            },
+            { 
+                id: 'i003', course_id: 'MA202', type: 'notice', title: '调课通知', 
+                content: '本周一的高数课调至周三晚上，地点不变。', 
+                deadline: '', source_url: '', upvotes: 5, verified: false, created_at: new Date(Date.now() - 1800000).toISOString(), author_id: 'u001' 
+            }
+        ];
+
+        // --- State Management ---
+        const state = {
+            user: { ...MOCK_USER },
+            courses: [...MOCK_COURSES],
+            intel: [...MOCK_INTEL],
+            currentCourseId: 'MA202',
+            currentFilter: 'all', // all, homework, exam, notice
+            currentSemester: 'all',
+            chatHistory: []
+        };
+
+        // --- Utility Functions ---
+        function formatDate(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            return `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        function isUrgent(isoString) {
+            if (!isoString) return false;
+            const deadline = new Date(isoString);
+            const now = new Date();
+            const diffHours = (deadline - now) / 3600000;
+            return diffHours > 0 && diffHours < 48; // Less than 48 hours
+        }
+
+        function isExpired(isoString) {
+            if (!isoString) return false;
+            return new Date(isoString) < new Date();
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+            const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-circle-exclamation' : 'fa-info-circle');
+            
+            toast.className = `${colors} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] animate-fade-in transition-all duration-300 transform`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span class="text-sm font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- Rendering Logic ---
+
+        function renderCourseList() {
+            const container = document.getElementById('course-list-container');
+            const searchVal = document.getElementById('course-search').value.toLowerCase();
+            
+            container.innerHTML = '';
+            
+            const filtered = state.courses.filter(c => {
+                const matchSem = state.currentSemester === 'all' || c.semester === state.currentSemester;
+                const matchSearch = c.name.toLowerCase().includes(searchVal) || c.teacher.toLowerCase().includes(searchVal);
+                return matchSem && matchSearch;
+            });
+
+            filtered.forEach(course => {
+                const isActive = course.id === state.currentCourseId;
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl cursor-pointer transition-all duration-200 border ${isActive ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-transparent hover:bg-slate-50 hover:border-slate-200'}`;
+                card.onclick = () => selectCourse(course.id);
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <h4 class="font-bold text-sm ${isActive ? 'text-blue-700' : 'text-slate-700'}">${course.name}</h4>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">${course.code}</span>
+                    </div>
+                    <div class="text-xs text-slate-500 flex items-center gap-2">
+                        <span><i class="fa-solid fa-user-tie mr-1"></i>${course.teacher}</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-1 flex justify-between">
+                        <span>${course.semester}</span>
+                        <span>${course.credits}学分</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function selectCourse(courseId) {
+            state.currentCourseId = courseId;
+            renderCourseList();
+            renderCourseHeader();
+            renderIntel();
+            initCharts(); // Re-render charts for the new course
+        }
+
+        function renderCourseHeader() {
+            const course = state.courses.find(c => c.id === state.currentCourseId);
+            if (!course) return;
+
+            document.getElementById('detail-course-code').textContent = course.code;
+            document.getElementById('detail-course-name').textContent = course.name;
+            document.getElementById('detail-semester').textContent = course.semester;
+            document.getElementById('detail-teacher').textContent = course.teacher;
+            document.getElementById('detail-time').textContent = course.time;
+            document.getElementById('detail-location').textContent = course.location;
+        }
+
+        function renderIntel() {
+            const container = document.getElementById('intel-list');
+            container.innerHTML = '';
+
+            let filtered = state.intel.filter(i => i.course_id === state.currentCourseId);
+            
+            if (state.currentFilter !== 'all') {
+                filtered = filtered.filter(i => i.type === state.currentFilter);
+            }
+
+            // Sort by time desc
+            filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-400 py-10">暂无相关情报</div>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const isMyIntel = item.author_id === state.user.id;
+                const canEdit = (state.user.role === 'admin' || state.user.role === 'monitor' || isMyIntel) && !isExpired(item.deadline);
+                const expired = isExpired(item.deadline);
+                const urgent = isUrgent(item.deadline);
+                
+                const typeIcons = {
+                    homework: 'fa-book-open',
+                    exam: 'fa-file-signature',
+                    notice: 'fa-bullhorn',
+                    resource: 'fa-folder-open'
+                };
+                
+                const typeLabels = {
+                    homework: '作业', exam: '考试', notice: '通知', resource: '资料'
+                };
+
+                const el = document.createElement('div');
+                el.className = `relative group animate-fade-in ${expired ? 'opacity-60 grayscale' : ''}`;
+                
+                // Timeline Dot
+                const dotColor = item.verified ? 'bg-green-500' : 'bg-slate-300';
+                
+                el.innerHTML = `
+                    <div class="absolute -left-[41px] top-1 w-4 h-4 rounded-full border-2 border-white ${dotColor} shadow-sm z-10"></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-slate-500 text-xs">
+                                    <i class="fa-solid ${typeIcons[item.type] || 'fa-info-circle'}"></i>
+                                </span>
+                                <span class="text-xs font-semibold text-slate-500 uppercase">${typeLabels[item.type]}</span>
+                                ${item.verified ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200"><i class="fa-solid fa-check mr-1"></i>已核实</span>' : ''}
+                                ${urgent && !expired ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 animate-pulse">即将截止</span>' : ''}
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-400">${formatDate(item.created_at)}</span>
+                                ${canEdit ? `
+                                <div class="relative group/edit">
+                                    <button class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-ellipsis"></i></button>
+                                    <div class="absolute right-0 top-4 w-24 bg-white border border-slate-100 rounded-lg shadow-xl hidden group-hover/edit:block z-20 overflow-hidden">
+                                        <button onclick="editIntel('${item.id}')" class="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 text-slate-600">编辑</button>
+                                        <button onclick="deleteIntel('${item.id}')" class="w-full text-left px-3 py-2 text-xs hover:bg-red-50 text-red-600">删除</button>
+                                    </div>
+                                </div>` : ''}
+                            </div>
+                        </div>
+                        
+                        <h4 class="font-bold text-slate-800 mb-1">${item.title}</h4>
+                        <p class="text-sm text-slate-600 mb-3 leading-relaxed">${item.content}</p>
+                        
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-50">
+                            <div class="flex items-center gap-3">
+                                ${item.deadline ? `<span class="text-xs ${expired ? 'text-slate-400 line-through' : 'text-slate-500'}"><i class="fa-regular fa-clock mr-1"></i>${expired ? '已截止' : '截止: ' + formatDate(item.deadline)}</span>` : ''}
+                                ${item.source_url ? `<a href="${item.source_url}" target="_blank" class="text-xs text-blue-500 hover:underline"><i class="fa-solid fa-link mr-1"></i>来源</a>` : ''}
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="upvoteIntel('${item.id}')" class="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-slate-50 text-slate-500 transition-colors ${item.upvoted_by_me ? 'text-blue-600 bg-blue-50' : ''}">
+                                    <i class="fa-regular fa-thumbs-up"></i>
+                                    <span class="text-xs font-medium" id="upvote-count-${item.id}">${item.upvotes}</span>
+                                </button>
+                                ${state.user.role === 'monitor' && !item.verified ? `
+                                    <button onclick="verifyIntel('${item.id}')" class="text-xs text-green-600 hover:bg-green-50 px-2 py-1 rounded-md transition-colors" title="标记为可信">
+                                        <i class="fa-solid fa-check-double"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        // --- Interaction Logic ---
+
+        // Role Switching
+        document.getElementById('role-selector').addEventListener('change', (e) => {
+            state.user.role = e.target.value;
+            showToast(`已切换角色为: ${e.target.options[e.target.selectedIndex].text}`, 'info');
+            renderIntel(); // Re-render to show/hide edit buttons
+            const postBtn = document.getElementById('btn-post-intel');
+            if (state.user.role === 'guest') {
+                postBtn.style.display = 'none';
+            } else {
+                postBtn.style.display = 'block';
+            }
+        });
+
+        // Search & Filter
+        document.getElementById('course-search').addEventListener('input', renderCourseList);
+        
+        document.querySelectorAll('.semester-filter').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.semester-filter').forEach(b => {
+                    b.classList.remove('bg-blue-600', 'text-white');
+                    b.classList.add('bg-slate-100', 'text-slate-600');
+                });
+                e.target.classList.remove('bg-slate-100', 'text-slate-600');
+                e.target.classList.add('bg-blue-600', 'text-white');
+                state.currentSemester = e.target.dataset.semester;
+                renderCourseList();
+            });
+        });
+
+        document.querySelectorAll('.intel-tab').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.intel-tab').forEach(b => {
+                    b.classList.remove('active', 'border-blue-600', 'text-blue-600');
+                    b.classList.add('border-transparent', 'text-slate-500');
+                });
+                e.target.classList.add('active', 'border-blue-600', 'text-blue-600');
+                e.target.classList.remove('border-transparent', 'text-slate-500');
+                state.currentFilter = e.target.dataset.filter;
+                renderIntel();
+            });
+        });
+
+        // --- Intel CRUD ---
+
+        const modal = document.getElementById('intel-modal');
+        const form = document.getElementById('intel-form');
+
+        function openPostModal() {
+            if (state.user.role === 'guest') {
+                showToast('游客无权限发布情报', 'error');
+                return;
+            }
+            document.getElementById('modal-title').textContent = '发布课程情报';
+            form.reset();
+            document.getElementById('intel-id').value = '';
+            modal.showModal();
+        }
+
+        function closePostModal() {
+            modal.close();
+        }
+
+        function editIntel(id) {
+            const item = state.intel.find(i => i.id === id);
+            if (!item) return;
+            
+            document.getElementById('modal-title').textContent = '编辑情报';
+            document.getElementById('intel-id').value = item.id;
+            document.getElementById('intel-type').value = item.type;
+            document.getElementById('intel-title').value = item.title;
+            document.getElementById('intel-content').value = item.content;
+            document.getElementById('intel-deadline').value = item.deadline ? item.deadline.slice(0, 16) : '';
+            document.getElementById('intel-source').value = item.source_url;
+            
+            modal.showModal();
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('intel-id').value;
+            const type = document.getElementById('intel-type').value;
+            const title = document.getElementById('intel-title').value;
+            const content = document.getElementById('intel-content').value;
+            const deadline = document.getElementById('intel-deadline').value;
+            const source = document.getElementById('intel-source').value;
+
+            if (id) {
+                // Edit
+                const index = state.intel.findIndex(i => i.id === id);
+                if (index !== -1) {
+                    state.intel[index] = { ...state.intel[index], type, title, content, deadline: deadline ? new Date(deadline).toISOString() : '', source_url: source };
+                    showToast('情报已更新');
+                }
+            } else {
+                // Create
+                const newIntel = {
+                    id: 'i' + Date.now(),
+                    course_id: state.currentCourseId,
+                    type,
+                    title,
+                    content,
+                    deadline: deadline ? new Date(deadline).toISOString() : '',
+                    source_url: source,
+                    upvotes: 0,
+                    verified: false,
+                    created_at: new Date().toISOString(),
+                    author_id: state.user.id
+                };
+                state.intel.unshift(newIntel);
+                showToast('情报发布成功');
+            }
+            
+            closePostModal();
+            renderIntel();
+            initCharts();
+        });
+
+        function deleteIntel(id) {
+            if(!confirm('确定要删除这条情报吗？')) return;
+            state.intel = state.intel.filter(i => i.id !== id);
+            renderIntel();
+            initCharts();
+            showToast('情报已删除');
+        }
+
+        function upvoteIntel(id) {
+            const item = state.intel.find(i => i.id === id);
+            if (item) {
+                // Simple toggle logic for demo
+                if (item.upvoted_by_me) {
+                    item.upvotes--;
+                    item.upvoted_by_me = false;
+                } else {
+                    item.upvotes++;
+                    item.upvoted_by_me = true;
+                }
+                renderIntel();
+            }
+        }
+
+        function verifyIntel(id) {
+            const item = state.intel.find(i => i.id === id);
+            if (item) {
+                item.verified = true;
+                renderIntel();
+                showToast('已标记为核实情报');
+            }
+        }
+
+        // --- Charts (ECharts) ---
+        let activityChart, distChart;
+
+        function toggleStats() {
+            const panel = document.getElementById('stats-panel');
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                initCharts();
+            } else {
+                panel.classList.add('hidden');
+            }
+        }
+
+        function initCharts() {
+            if (document.getElementById('stats-panel').classList.contains('hidden')) return;
+
+            const courseIntel = state.intel.filter(i => i.course_id === state.currentCourseId);
+            
+            // Activity Chart (Mocking weekly data)
+            const activityDom = document.getElementById('chart-activity');
+            if (activityChart) activityChart.dispose();
+            activityChart = echarts.init(activityDom);
+            
+            activityChart.setOption({
+                title: { text: '情报发布活跃度', left: 'center', textStyle: { fontSize: 14, color: '#64748b' } },
+                tooltip: { trigger: 'axis' },
+                xAxis: { type: 'category', data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] },
+                yAxis: { type: 'value' },
+                series: [{
+                    data: [Math.floor(Math.random()*5), Math.floor(Math.random()*5), Math.floor(Math.random()*5), Math.floor(Math.random()*5), Math.floor(Math.random()*5), Math.floor(Math.random()*5), Math.floor(Math.random()*5)],
+                    type: 'line',
+                    smooth: true,
+                    areaStyle: { opacity: 0.1, color: '#3b82f6' },
+                    itemStyle: { color: '#3b82f6' }
+                }]
+            });
+
+            // Distribution Chart
+            const distDom = document.getElementById('chart-distribution');
+            if (distChart) distChart.dispose();
+            distChart = echarts.init(distDom);
+
+            const counts = { homework: 0, exam: 0, notice: 0, resource: 0 };
+            courseIntel.forEach(i => { if(counts[i.type] !== undefined) counts[i.type]++; });
+
+            distChart.setOption({
+                title: { text: '情报类型分布', left: 'center', textStyle: { fontSize: 14, color: '#64748b' } },
+                tooltip: { trigger: 'item' },
+                series: [{
+                    name: '类型',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
+                    label: { show: false, position: 'center' },
+                    emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
+                    data: [
+                        { value: counts.homework, name: '作业', itemStyle: { color: '#60a5fa' } },
+                        { value: counts.exam, name: '考试', itemStyle: { color: '#f87171' } },
+                        { value: counts.notice, name: '通知', itemStyle: { color: '#fbbf24' } },
+                        { value: counts.resource, name: '资料', itemStyle: { color: '#34d399' } }
+                    ]
+                }]
+            });
+        }
+
+        // --- LLM AI Chat Logic ---
+
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatHistory = document.getElementById('chat-history');
+
+        function appendMessage(role, text, isStreaming = false) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-3 animate-fade-in';
+            
+            if (role === 'user') {
+                div.innerHTML = `
+                    <div class="ml-auto bg-blue-600 text-white p-3 rounded-2xl rounded-tr-none shadow-sm text-sm max-w-[85%]">
+                        ${text}
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-slate-200 overflow-hidden shrink-0">
+                        <img src="https://picsum.photos/seed/user123/100/100" class="w-full h-full object-cover">
+                    </div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shrink-0">
+                        <i class="fa-solid fa-robot text-xs"></i>
+                    </div>
+                    <div class="bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700 max-w-[85%] message-content">
+                        ${isStreaming ? '<div class="typing-indicator"><span></span><span></span><span></span></div>' : text}
+                    </div>
+                `;
+            }
+            chatHistory.appendChild(div);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            return div.querySelector('.message-content');
+        }
+
+        function clearChatHistory() {
+            chatHistory.innerHTML = '';
+            // Re-add welcome
+            appendMessage('ai', '你好！我是你的课程情报助手。你可以问我关于作业、考试或课件的问题。');
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = chatInput.value.trim();
+            if (!query) return;
+
+            // User Message
+            appendMessage('user', query);
+            chatInput.value = '';
+
+            // AI Loading State
+            const aiMsgContainer = appendMessage('ai', '', true);
+
+            try {
+                // Simulate API Call to /api/llm.js
+                // In a real app, this would be: const res = await axios.post('/api/llm.js', { query, courseId: state.currentCourseId });
+                
+                // Mock Logic for Demo
+                await new Promise(r => setTimeout(r, 1500)); // Network delay
+                
+                // Simple keyword matching to simulate "Smart Retrieval"
+                const courseName = state.courses.find(c => c.id === state.currentCourseId)?.name || '这门课';
+                const relevantIntel = state.intel.filter(i => i.course_id === state.currentCourseId && 
+                    (query.includes('作业') ? i.type === 'homework' : true) &&
+                    (query.includes('考试') ? i.type === 'exam' : true)
+                ).slice(0, 2);
+
+                let responseText = `根据${courseName}的最新情报：\n`;
+                
+                if (relevantIntel.length > 0) {
+                    relevantIntel.forEach(item => {
+                        responseText += `• ${item.title}：${item.content.substring(0, 20)}... \n`;
+                    });
+                    responseText += `\n(来源: 课程情报库)`;
+                } else {
+                    responseText = `抱歉，我在${courseName}的情报中没有找到关于"${query}"的具体信息。建议查看“重要通知”分类或询问班委。`;
+                }
+
+                // Stream the response
+                aiMsgContainer.innerHTML = ''; // Remove loading indicator
+                let i = 0;
+                const interval = setInterval(() => {
+                    aiMsgContainer.textContent += responseText.charAt(i);
+                    i++;
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                    if (i >= responseText.length) clearInterval(interval);
+                }, 30);
+
+            } catch (error) {
+                aiMsgContainer.textContent = '抱歉，AI助手暂时无法连接，请稍后再试。';
+                console.error(error);
+            }
+        });
+
+        // --- Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            renderCourseList();
+            selectCourse(state.currentCourseId);
+            
+            // Handle window resize for charts
+            window.addEventListener('resize', () => {
+                if(activityChart) activityChart.resize();
+                if(distChart) distChart.resize();
+            });
+        });
+
+    </script>
+</body>
+</html>

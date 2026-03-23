@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>物资共享与借用管理 - 班务网页</title>
+<!-- Tailwind CSS -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/0915/3.4.17.js"></script>
+<!-- Font Awesome -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/js/all.min.js"></script>
+<link href="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/css/fontawesome.min.css" rel="stylesheet"/>
+<!-- Axios -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/cdn-staticfile-net/axios/1.6.7/axios.min.js"></script>
+<!-- Canvas Confetti -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/cdn.jsdelivr.net/npm/canvas-confetti/1.6.0/dist/confetti.browser.min.js"></script>
+<style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Card Hover Effects */
+        .item-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .item-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Modal Transitions */
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        body.modal-active {
+            overflow-x: hidden;
+            overflow-y: visible !important;
+        }
+
+        /* Toast Animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-enter {
+            animation: slideIn 0.3s forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+<!-- Navigation Bar -->
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between h-16">
+<div class="flex items-center">
+<div class="flex-shrink-0 flex items-center gap-2 text-blue-600">
+<i class="fa-solid fa-boxes-stacked text-2xl"></i>
+<span class="font-bold text-xl tracking-tight text-gray-900">统双班务</span>
+</div>
+<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+<a class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" href="index.html">首页</a>
+<a class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" href="tasks.html">任务管理</a>
+<a class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" href="items.html">物资共享</a>
+</div>
+</div>
+<!-- User & Role Simulation -->
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-end">
+<span class="text-sm font-medium text-gray-900" id="currentUserName">加载中...</span>
+<select class="text-xs text-gray-500 border-none bg-transparent focus:ring-0 cursor-pointer hover:text-blue-600" id="roleSwitcher">
+<option value="guest">游客模式</option>
+<option value="student_zhang">同学：张三 (ID: 101)</option>
+<option value="student_li">同学：李四 (ID: 102)</option>
+<option value="monitor">班委 (Admin)</option>
+</select>
+</div>
+<div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+<i class="fa-solid fa-user"></i>
+</div>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+<!-- Page Header -->
+<div class="md:flex md:items-center md:justify-between mb-8">
+<div class="flex-1 min-w-0">
+<h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+                    物资共享与借用
+                </h2>
+<p class="mt-1 text-sm text-gray-500">管理班级公共物资及个人闲置物品，高效流转，物尽其用。</p>
+</div>
+<div class="mt-4 flex md:mt-0 md:ml-4 gap-3">
+<button class="hidden inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" id="btnAddItem" onclick="openAddItemModal()">
+<i class="fa-solid fa-plus mr-2"></i> 发布物资
+                </button>
+</div>
+</div>
+<!-- Filters & Tabs -->
+<div class="bg-white shadow rounded-lg mb-6 p-4">
+<div class="flex flex-wrap gap-2 sm:flex-row sm:justify-between items-center">
+<div class="flex space-x-1 bg-gray-100 p-1 rounded-lg" id="viewTabs">
+<button class="view-tab px-4 py-2 text-sm font-medium rounded-md bg-white text-gray-900 shadow transition-all" data-view="all" onclick="switchView('all')">全部物资</button>
+<button class="view-tab px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:text-gray-900 transition-all" data-view="my_borrowings" onclick="switchView('my_borrowings')">我的借用</button>
+<button class="view-tab px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:text-gray-900 transition-all" data-view="my_shared" onclick="switchView('my_shared')">我的共享</button>
+<button class="hidden view-tab px-4 py-2 text-sm font-medium rounded-md text-gray-500 hover:text-gray-900 transition-all" data-view="monitor" id="tabMonitor" onclick="switchView('monitor')">
+<i class="fa-solid fa-shield-halved mr-1"></i> 班委管理
+                    </button>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xs text-gray-500">快速筛选:</span>
+<button class="px-2 py-1 text-xs border rounded hover:bg-gray-50" onclick="filterByStatus(null)">全部</button>
+<button class="px-2 py-1 text-xs border border-green-200 text-green-700 rounded hover:bg-green-50" onclick="filterByStatus(0)">可借用</button>
+<button class="px-2 py-1 text-xs border border-red-200 text-red-700 rounded hover:bg-red-50" onclick="filterByStatus(1)">已借出</button>
+<button class="px-2 py-1 text-xs border border-yellow-200 text-yellow-700 rounded hover:bg-yellow-50" onclick="filterByStatus(2)">待确认</button>
+</div>
+</div>
+</div>
+<!-- Content Area: Grid View -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="itemsGrid">
+<!-- Items will be injected here via JS -->
+</div>
+<!-- Content Area: Monitor Panel (Hidden by default) -->
+<div class="hidden bg-white shadow rounded-lg overflow-hidden" id="monitorPanel">
+<div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+<h3 class="text-lg leading-6 font-medium text-gray-900">班级物资总览明细</h3>
+<button class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none" onclick="exportToExcel()">
+<i class="fa-solid fa-file-excel mr-2 text-green-600"></i> 导出 Excel
+                </button>
+</div>
+<div class="overflow-x-auto">
+<table class="min-w-full divide-y divide-gray-200">
+<thead class="bg-gray-50">
+<tr>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">物品名称</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">类型</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">当前状态</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">当前借用人</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">预计归还</th>
+<th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" scope="col">操作</th>
+</tr>
+</thead>
+<tbody class="bg-white divide-y divide-gray-200" id="monitorTableBody">
+<!-- Table rows injected via JS -->
+</tbody>
+</table>
+</div>
+</div>
+<!-- Empty State -->
+<div class="hidden text-center py-12" id="emptyState">
+<div class="inline-block p-4 rounded-full bg-gray-100 mb-4">
+<i class="fa-solid fa-box-open text-4xl text-gray-400"></i>
+</div>
+<h3 class="text-lg font-medium text-gray-900">暂无相关物资</h3>
+<p class="mt-1 text-gray-500">请尝试切换筛选条件或发布新物资。</p>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-white border-t border-gray-200 mt-auto">
+<div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+<p class="text-center text-sm text-gray-400">
+                © 2026 统双班务系统. All rights reserved. 
+            </p>
+</div>
+</footer>
+<!-- Modals -->
+<!-- Borrow Modal -->
+<div class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50" id="borrowModal">
+<div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+<div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto">
+<div class="modal-content py-4 text-left px-6">
+<div class="flex justify-between items-center pb-3">
+<p class="text-xl font-bold text-gray-800">确认借用</p>
+<div class="modal-close cursor-pointer z-50" onclick="closeModal('borrowModal')">
+<i class="fa-solid fa-xmark"></i>
+</div>
+</div>
+<p class="text-sm text-gray-600 mb-4">您即将借用 <span class="font-bold text-blue-600" id="borrowItemName"></span>。</p>
+<div class="mb-4">
+<label class="block text-gray-700 text-sm font-bold mb-2" for="borrowDuration">
+                        预计借用时长
+                    </label>
+<select class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="borrowDuration">
+<option value="1">1 天</option>
+<option value="3">3 天</option>
+<option value="7">1 周</option>
+<option value="30">1 月</option>
+</select>
+</div>
+<div class="flex justify-end pt-2">
+<button class="px-4 py-2 bg-transparent p-3 rounded-lg text-indigo-500 hover:bg-gray-100 hover:text-indigo-400 mr-2" onclick="closeModal('borrowModal')">取消</button>
+<button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" id="confirmBorrowBtn">确认借用</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Return Modal -->
+<div class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50" id="returnModal">
+<div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+<div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto">
+<div class="modal-content py-4 text-left px-6">
+<div class="flex justify-between items-center pb-3">
+<p class="text-xl font-bold text-gray-800">发起归还</p>
+<div class="modal-close cursor-pointer z-50" onclick="closeModal('returnModal')">
+<i class="fa-solid fa-xmark"></i>
+</div>
+</div>
+<p class="text-sm text-gray-600 mb-4">您已归还 <span class="font-bold text-blue-600" id="returnItemName"></span> 吗？</p>
+<div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+<div class="flex">
+<div class="flex-shrink-0">
+<i class="fa-solid fa-circle-info text-yellow-400"></i>
+</div>
+<div class="ml-3">
+<p class="text-sm text-yellow-700">
+                                请将物品线下交还给所有者，所有者确认后状态才会更新为“可借用”。
+                            </p>
+</div>
+</div>
+</div>
+<div class="flex justify-end pt-2">
+<button class="px-4 py-2 bg-transparent p-3 rounded-lg text-indigo-500 hover:bg-gray-100 hover:text-indigo-400 mr-2" onclick="closeModal('returnModal')">取消</button>
+<button class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700" id="confirmReturnBtn">已线下归还，提交申请</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Confirm Receipt Modal -->
+<div class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50" id="receiptModal">
+<div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+<div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto">
+<div class="modal-content py-4 text-left px-6">
+<div class="flex justify-between items-center pb-3">
+<p class="text-xl font-bold text-gray-800">确认收回</p>
+<div class="modal-close cursor-pointer z-50" onclick="closeModal('receiptModal')">
+<i class="fa-solid fa-xmark"></i>
+</div>
+</div>
+<p class="text-sm text-gray-600 mb-4">确认已收到 <span class="font-bold text-blue-600" id="receiptItemName"></span> 且完好无损？</p>
+<div class="flex justify-end pt-2">
+<button class="px-4 py-2 bg-transparent p-3 rounded-lg text-indigo-500 hover:bg-gray-100 hover:text-indigo-400 mr-2" onclick="closeModal('receiptModal')">取消</button>
+<button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" id="confirmReceiptBtn">确认收回</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Delete Modal -->
+<div class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50" id="deleteModal">
+<div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+<div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto">
+<div class="modal-content py-4 text-left px-6">
+<div class="flex justify-between items-center pb-3">
+<p class="text-xl font-bold text-red-600">下架物资</p>
+<div class="modal-close cursor-pointer z-50" onclick="closeModal('deleteModal')">
+<i class="fa-solid fa-xmark"></i>
+</div>
+</div>
+<p class="text-sm text-gray-600 mb-4">确定要下架 <span class="font-bold" id="deleteItemName"></span> 吗？此操作不可恢复。</p>
+<p class="text-sm text-red-500 mb-4 hidden" id="deleteError">该物品当前状态不允许删除（必须为可借用状态）。</p>
+<div class="flex justify-end pt-2">
+<button class="px-4 py-2 bg-transparent p-3 rounded-lg text-indigo-500 hover:bg-gray-100 hover:text-indigo-400 mr-2" onclick="closeModal('deleteModal')">取消</button>
+<button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" id="confirmDeleteBtn">确认下架</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Toast Container -->
+<div class="fixed top-20 right-5 z-50 flex flex-col gap-2" id="toastContainer"></div>
+<script>
+        // --- 1. State Management & Mock Data ---
+
+        // User Roles
+        const ROLES = {
+            GUEST: 'guest',
+            STUDENT: 'student',
+            MONITOR: 'monitor'
+        };
+
+        // Current User State
+        let currentUser = {
+            id: 'guest',
+            name: '游客',
+            role: ROLES.GUEST
+        };
+
+        // Mock Database: Items
+        let items = [
+            {
+                id: 'item_001',
+                name: '单反相机',
+                type: 'class', // 'class' or 'personal'
+                owner_id: 'class_admin',
+                owner_name: '班级公共',
+                status: 0, // 0: Available, 1: Borrowed, 2: Pending Return
+                description: '用于班级活动拍摄，含SD卡。',
+                emoji: '📷',
+                borrower_id: null,
+                borrow_time: null,
+                expected_return: null
+            },
+            {
+                id: 'item_002',
+                name: '急救药品箱',
+                type: 'class',
+                owner_id: 'class_admin',
+                owner_name: '班级公共',
+                status: 0,
+                description: '创可贴、碘伏、感冒药等。',
+                emoji: '💊',
+                borrower_id: null,
+                borrow_time: null,
+                expected_return: null
+            },
+            {
+                id: 'item_003',
+                name: '篮球',
+                type: 'class',
+                owner_id: 'class_admin',
+                owner_name: '班级公共',
+                status: 1,
+                description: '斯伯丁官方用球。',
+                emoji: '🏀',
+                borrower_id: '101', // Zhang San
+                borrower_name: '张三',
+                borrow_time: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
+                expected_return: new Date(Date.now() + 86400000 * 5).toISOString()
+            },
+            {
+                id: 'item_004',
+                name: '《JavaScript高级程序设计》',
+                type: 'personal',
+                owner_id: '102', // Li Si
+                owner_name: '李四',
+                status: 2,
+                description: '第4版，红宝书，九成新。',
+                emoji: '📚',
+                borrower_id: '101', // Zhang San
+                borrower_name: '张三',
+                borrow_time: new Date(Date.now() - 86400000 * 7).toISOString(),
+                expected_return: new Date(Date.now() - 86400000 * 1).toISOString() // Overdue
+            },
+            {
+                id: 'item_005',
+                name: '小米充电宝 20000mAh',
+                type: 'personal',
+                owner_id: '101', // Zhang San
+                owner_name: '张三',
+                status: 0,
+                description: '支持快充，线需自备。',
+                emoji: '🔋',
+                borrower_id: null,
+                borrow_time: null,
+                expected_return: null
+            }
+        ];
+
+        // Mock Database: Borrow Records (Actions)
+        let records = [];
+
+        // UI State
+        let currentView = 'all'; // 'all', 'my_borrowings', 'my_shared', 'monitor'
+        let statusFilter = null; // 0, 1, 2, or null
+
+        // --- 2. Initialization & Event Listeners ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initUser();
+            render();
+            
+            // Role Switcher Listener
+            document.getElementById('roleSwitcher').addEventListener('change', (e) => {
+                const val = e.target.value;
+                if (val === 'guest') {
+                    currentUser = { id: 'guest', name: '游客', role: ROLES.GUEST };
+                } else if (val === 'student_zhang') {
+                    currentUser = { id: '101', name: '张三', role: ROLES.STUDENT };
+                } else if (val === 'student_li') {
+                    currentUser = { id: '102', name: '李四', role: ROLES.STUDENT };
+                } else if (val === 'monitor') {
+                    currentUser = { id: 'admin', name: '班委', role: ROLES.MONITOR };
+                }
+                showToast(`已切换至身份：${currentUser.name}`, 'info');
+                render();
+            });
+        });
+
+        function initUser() {
+            // Default to guest
+            document.getElementById('currentUserName').innerText = currentUser.name;
+        }
+
+        function render() {
+            document.getElementById('currentUserName').innerText = currentUser.name;
+            
+            // Update Tab Visibility
+            const monitorTab = document.getElementById('tabMonitor');
+            const addBtn = document.getElementById('btnAddItem');
+            
+            if (currentUser.role === ROLES.MONITOR) {
+                monitorTab.classList.remove('hidden');
+                addBtn.classList.remove('hidden');
+            } else {
+                monitorTab.classList.add('hidden');
+                addBtn.classList.add('hidden');
+                // If currently on monitor tab and switched to non-monitor, go to all
+                if (currentView === 'monitor') switchView('all');
+            }
+
+            // Render Content based on View
+            const grid = document.getElementById('itemsGrid');
+            const monitorPanel = document.getElementById('monitorPanel');
+            const emptyState = document.getElementById('emptyState');
+
+            grid.innerHTML = '';
+            document.getElementById('monitorTableBody').innerHTML = '';
+
+            let filteredItems = getFilteredItems();
+
+            if (filteredItems.length === 0) {
+                emptyState.classList.remove('hidden');
+                grid.classList.add('hidden');
+                monitorPanel.classList.add('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                
+                if (currentView === 'monitor') {
+                    monitorPanel.classList.remove('hidden');
+                    grid.classList.add('hidden');
+                    renderMonitorTable(filteredItems);
+                } else {
+                    monitorPanel.classList.add('hidden');
+                    grid.classList.remove('hidden');
+                    filteredItems.forEach(item => {
+                        grid.appendChild(createItemCard(item));
+                    });
+                }
+            }
+        }
+
+        function getFilteredItems() {
+            let result = items;
+
+            // 1. View Filter
+            if (currentView === 'my_borrowings') {
+                result = result.filter(i => i.borrower_id === currentUser.id);
+            } else if (currentView === 'my_shared') {
+                result = result.filter(i => i.owner_id === currentUser.id);
+            }
+
+            // 2. Status Filter
+            if (statusFilter !== null) {
+                result = result.filter(i => i.status === statusFilter);
+            }
+
+            return result;
+        }
+
+        // --- 3. Component Rendering ---
+
+        function createItemCard(item) {
+            const div = document.createElement('div');
+            div.className = 'item-card bg-white rounded-lg shadow border border-gray-100 overflow-hidden flex flex-col';
+            
+            // Status Badge Logic
+            let statusBadge = '';
+            let statusText = '';
+            let statusBg = '';
+            
+            if (item.status === 0) {
+                statusBadge = '<span class="px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full">可借用</span>';
+            } else if (item.status === 1) {
+                statusBadge = '<span class="px-2 py-1 text-xs font-semibold text-red-700 bg-red-100 rounded-full">已借出</span>';
+            } else {
+                statusBadge = '<span class="px-2 py-1 text-xs font-semibold text-yellow-700 bg-yellow-100 rounded-full">待确认</span>';
+            }
+
+            // Owner Info
+            const ownerIcon = item.type === 'class' ? 'fa-users' : 'fa-user';
+            const ownerTypeText = item.type === 'class' ? '班级公共' : '个人闲置';
+
+            // Action Buttons Logic
+            let actionArea = '';
+            
+            if (currentUser.role === ROLES.GUEST) {
+                actionArea = `<button class="w-full mt-4 py-2 bg-gray-100 text-gray-400 rounded cursor-not-allowed" disabled>登录后可操作</button>`;
+            } else {
+                // Status 0: Available
+                if (item.status === 0) {
+                    if (item.owner_id !== currentUser.id) {
+                        actionArea = `<button onclick="openBorrowModal('${item.id}')" class="w-full mt-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors shadow-sm">借用物品</button>`;
+                    } else {
+                        actionArea = `<div class="w-full mt-4 py-2 bg-gray-50 text-gray-500 rounded text-center text-sm border border-dashed border-gray-300">我的物品</div>`;
+                    }
+                }
+                // Status 1: Borrowed
+                else if (item.status === 1) {
+                    if (item.borrower_id === currentUser.id) {
+                        const dueDate = new Date(item.expected_return);
+                        const isOverdue = new Date() > dueDate;
+                        const overdueClass = isOverdue ? 'text-red-500 font-bold' : 'text-gray-600';
+                        const overdueText = isOverdue ? '(已逾期)' : '';
+                        
+                        actionArea = `
+                            <div class="mt-4 space-y-2">
+                                <div class="text-xs text-center ${overdueClass}">
+                                    归还截止: ${formatDate(item.expected_return)} ${overdueText}
+                                </div>
+                                <button onclick="openReturnModal('${item.id}')" class="w-full py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors shadow-sm">归还物品</button>
+                            </div>
+                        `;
+                    } else if (item.owner_id === currentUser.id || currentUser.role === ROLES.MONITOR) {
+                        actionArea = `
+                            <div class="mt-4 p-3 bg-gray-50 rounded text-sm text-gray-600 border border-gray-200">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <i class="fa-solid fa-hand-holding-hand"></i>
+                                    <span class="font-medium">借用人: ${item.borrower_name}</span>
+                                </div>
+                                <div class="text-xs text-gray-500">借出时间: ${formatDate(item.borrow_time)}</div>
+                            </div>
+                        `;
+                    } else {
+                        actionArea = `<div class="w-full mt-4 py-2 bg-gray-100 text-gray-400 rounded text-center text-sm">他人借用中</div>`;
+                    }
+                }
+                // Status 2: Pending Return
+                else if (item.status === 2) {
+                    if (item.owner_id === currentUser.id) {
+                        actionArea = `
+                            <div class="mt-4 space-y-2">
+                                <div class="text-xs text-center text-yellow-600 font-medium bg-yellow-50 py-1 rounded">
+                                    ${item.borrower_name} 已发起归还
+                                </div>
+                                <button onclick="openReceiptModal('${item.id}')" class="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors shadow-sm">确认收回</button>
+                            </div>
+                        `;
+                    } else if (item.borrower_id === currentUser.id) {
+                        actionArea = `
+                            <div class="mt-4 p-3 bg-yellow-50 rounded text-sm text-yellow-800 border border-yellow-200">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-clock"></i>
+                                    <span>等待所有者 (${item.owner_name}) 确认收回</span>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        actionArea = `<div class="w-full mt-4 py-2 bg-gray-100 text-gray-400 rounded text-center text-sm">归还确认中</div>`;
+                    }
+                }
+            }
+
+            // Delete Button (Monitor Only)
+            let deleteBtn = '';
+            if (currentUser.role === ROLES.MONITOR) {
+                deleteBtn = `<button onclick="openDeleteModal('${item.id}')" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors" title="下架物资"><i class="fa-solid fa-trash"></i></button>`;
+            }
+
+            div.innerHTML = `
+                <div class="relative p-6 bg-gray-50 flex items-center justify-center h-48">
+                    <span class="text-6xl">${item.emoji}</span>
+                    ${deleteBtn}
+                    <div class="absolute top-2 left-2">${statusBadge}</div>
+                </div>
+                <div class="p-5 flex-grow flex flex-col">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-bold text-gray-900 truncate">${item.name}</h3>
+                    </div>
+                    <div class="flex items-center text-xs text-gray-500 mb-3">
+                        <i class="fa-solid ${ownerIcon} mr-1"></i>
+                        <span>${ownerTypeText} · ${item.owner_name}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4 line-clamp-2 flex-grow">${item.description}</p>
+                    ${actionArea}
+                </div>
+            `;
+            return div;
+        }
+
+        function renderMonitorTable(data) {
+            const tbody = document.getElementById('monitorTableBody');
+            tbody.innerHTML = '';
+            
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                let statusHtml = '';
+                if(item.status === 0) statusHtml = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">可借用</span>';
+                else if(item.status === 1) statusHtml = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">已借出</span>';
+                else statusHtml = '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">待确认</span>';
+
+                const borrowerName = item.borrower_name || '-';
+                const returnDate = item.expected_return ? formatDate(item.expected_return) : '-';
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.emoji} ${item.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.type === 'class' ? '班级公共' : '个人共享'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${statusHtml}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${borrowerName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${returnDate}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="openDeleteModal('${item.id}')" class="text-red-600 hover:text-red-900">下架</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- 4. Interaction Logic (Modals & Actions) ---
+
+        let activeItemId = null;
+
+        function switchView(viewName) {
+            currentView = viewName;
+            // Update Tab Styles
+            document.querySelectorAll('.view-tab').forEach(btn => {
+                if(btn.dataset.view === viewName) {
+                    btn.classList.remove('text-gray-500', 'hover:text-gray-900');
+                    btn.classList.add('bg-white', 'text-gray-900', 'shadow');
+                } else {
+                    btn.classList.add('text-gray-500', 'hover:text-gray-900');
+                    btn.classList.remove('bg-white', 'text-gray-900', 'shadow');
+                }
+            });
+            render();
+        }
+
+        function filterByStatus(status) {
+            statusFilter = status;
+            render();
+        }
+
+        // Modal Helpers
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.body.classList.add('modal-active');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.body.classList.remove('modal-active');
+            activeItemId = null;
+        }
+
+        // Borrow Logic
+        function openBorrowModal(itemId) {
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+            if (item.status !== 0) {
+                showToast('该物品当前不可借用', 'error');
+                return;
+            }
+            activeItemId = itemId;
+            document.getElementById('borrowItemName').innerText = item.name;
+            openModal('borrowModal');
+        }
+
+        document.getElementById('confirmBorrowBtn').addEventListener('click', () => {
+            if (!activeItemId) return;
+            const durationDays = parseInt(document.getElementById('borrowDuration').value);
+            const item = items.find(i => i.id === activeItemId);
+            
+            // API Simulation
+            const now = new Date();
+            const expected = new Date();
+            expected.setDate(now.getDate() + durationDays);
+
+            // Update State
+            item.status = 1;
+            item.borrower_id = currentUser.id;
+            item.borrower_name = currentUser.name;
+            item.borrow_time = now.toISOString();
+            item.expected_return = expected.toISOString();
+
+            // Add Record
+            records.push({
+                item_id: item.id,
+                user_id: currentUser.id,
+                action: 'borrow',
+                timestamp: now.toISOString()
+            });
+
+            closeModal('borrowModal');
+            showToast(`借用成功！请在 ${formatDate(item.expected_return)} 前归还。`, 'success');
+            render();
+        });
+
+        // Return Logic
+        function openReturnModal(itemId) {
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+            if (item.status !== 1) {
+                showToast('该物品状态异常，无法归还', 'error');
+                return;
+            }
+            if (item.borrower_id !== currentUser.id) {
+                showToast('您只能归还自己借用的物品', 'error');
+                return;
+            }
+            activeItemId = itemId;
+            document.getElementById('returnItemName').innerText = item.name;
+            openModal('returnModal');
+        }
+
+        document.getElementById('confirmReturnBtn').addEventListener('click', () => {
+            if (!activeItemId) return;
+            const item = items.find(i => i.id === activeItemId);
+
+            // Update State
+            item.status = 2; // Pending Confirmation
+
+            // Add Record
+            records.push({
+                item_id: item.id,
+                user_id: currentUser.id,
+                action: 'return_request',
+                timestamp: new Date().toISOString()
+            });
+
+            closeModal('returnModal');
+            showToast('归还申请已提交，请等待所有者确认。', 'success');
+            render();
+        });
+
+        // Receipt Logic
+        function openReceiptModal(itemId) {
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+            if (item.status !== 2) {
+                showToast('该物品不在待确认状态', 'error');
+                return;
+            }
+            if (item.owner_id !== currentUser.id && currentUser.role !== ROLES.MONITOR) {
+                showToast('只有所有者可以确认收回', 'error');
+                return;
+            }
+            activeItemId = itemId;
+            document.getElementById('receiptItemName').innerText = item.name;
+            openModal('receiptModal');
+        }
+
+        document.getElementById('confirmReceiptBtn').addEventListener('click', () => {
+            if (!activeItemId) return;
+            const item = items.find(i => i.id === activeItemId);
+
+            // Update State
+            item.status = 0;
+            item.borrower_id = null;
+            item.borrower_name = null;
+            item.borrow_time = null;
+            item.expected_return = null;
+
+            // Add Record
+            records.push({
+                item_id: item.id,
+                user_id: currentUser.id,
+                action: 'confirm_receipt',
+                timestamp: new Date().toISOString()
+            });
+
+            closeModal('receiptModal');
+            showToast('确认成功！物品已重新上架。', 'success');
+            confettiEffect();
+            render();
+        });
+
+        // Delete Logic
+        function openDeleteModal(itemId) {
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+            
+            activeItemId = itemId;
+            const errorText = document.getElementById('deleteError');
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            
+            document.getElementById('deleteItemName').innerText = item.name;
+
+            if (item.status !== 0) {
+                errorText.classList.remove('hidden');
+                confirmBtn.disabled = true;
+                confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                errorText.classList.add('hidden');
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+            openModal('deleteModal');
+        }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+            if (!activeItemId) return;
+            
+            // Remove item
+            items = items.filter(i => i.id !== activeItemId);
+            
+            closeModal('deleteModal');
+            showToast('物资已下架', 'success');
+            render();
+        });
+
+        // Export Excel
+        function exportToExcel() {
+            // Simple CSV generation
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Add BOM for Excel chinese support
+            csvContent += "ID,名称,类型,所有者,状态,借用人,借出时间,预计归还\n";
+            
+            items.forEach(item => {
+                const statusMap = {0: '可借用', 1: '已借出', 2: '待确认'};
+                const row = [
+                    item.id,
+                    item.name,
+                    item.type === 'class' ? '班级公共' : '个人共享',
+                    item.owner_name,
+                    statusMap[item.status],
+                    item.borrower_name || '',
+                    item.borrow_time ? formatDate(item.borrow_time) : '',
+                    item.expected_return ? formatDate(item.expected_return) : ''
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "班级物资清单_" + new Date().toISOString().slice(0,10) + ".csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('Excel 导出成功', 'success');
+        }
+
+        // --- 5. Utilities ---
+
+        function formatDate(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-gray-800';
+            let icon = 'fa-info-circle';
+            
+            if (type === 'success') { bgClass = 'bg-green-600'; icon = 'fa-check-circle'; }
+            if (type === 'error') { bgClass = 'bg-red-600'; icon = 'fa-exclamation-circle'; }
+            
+            toast.className = `toast-enter flex items-center w-full max-w-xs p-4 space-x-3 text-white ${bgClass} rounded-lg shadow-lg`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon} text-lg"></i>
+                <div class="text-sm font-medium">${message}</div>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function confettiEffect() {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+
+        // Add Item Modal (Simplified for Demo)
+        function openAddItemModal() {
+            // In a real app, this would open a form. 
+            // For this demo, we'll just add a random item to show functionality.
+            const newItems = [
+                { name: '羽毛球拍', emoji: '🏸', desc: '尤尼克斯，轻量级。' },
+                { name: '蓝牙音箱', emoji: '🔊', desc: 'JBL，适合团建。' },
+                { name: '三脚架', emoji: '📸', desc: '手机相机通用。' }
+            ];
+            const rand = newItems[Math.floor(Math.random() * newItems.length)];
+            
+            const newItem = {
+                id: 'item_' + Date.now(),
+                name: rand.name,
+                type: 'class',
+                owner_id: currentUser.id,
+                owner_name: currentUser.name,
+                status: 0,
+                description: rand.desc,
+                emoji: rand.emoji,
+                borrower_id: null,
+                borrow_time: null,
+                expected_return: null
+            };
+            
+            items.unshift(newItem);
+            showToast(`已发布新物资：${newItem.name}`, 'success');
+            render();
+        }
+
+        // Mock API Call Wrapper (Simulating backend interaction)
+        async function apiCall(endpoint, method, data) {
+            console.log(`[API Mock] ${method} ${endpoint}`, data);
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return { status: 200, message: "OK" };
+        }
+
+    </script>
+</body>
+</html>
