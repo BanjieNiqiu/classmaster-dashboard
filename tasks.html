@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>统双班务 - 班务收集管理</title>
+<!-- External Libraries (CDN) -->
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/0915/3.4.17.js"></script>
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/js/all.min.js"></script>
+<link href="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/css/fontawesome.min.css" rel="stylesheet"/>
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/cdn-staticfile-net/echarts/5.4.3/echarts.min.js"></script>
+<script src="https://image.uc.cn/s/uae/g/3n/mos-production/cdn-staticfile-net/axios/1.6.7/axios.min.js"></script>
+<!-- Custom Styles -->
+<style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Modal Transitions */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .modal-exit {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .modal-exit-active {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Toast Animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-item {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+<!-- Navigation Bar -->
+<nav class="bg-white shadow-sm sticky top-0 z-40">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex justify-between h-16">
+<div class="flex items-center">
+<i class="fa-solid fa-graduation-cap text-blue-600 text-2xl mr-3"></i>
+<span class="font-bold text-xl text-gray-900">统双班务</span>
+<span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">Tasks</span>
+</div>
+<div class="flex items-center space-x-4">
+<!-- Role Switcher for Demo -->
+<div class="hidden md:flex items-center space-x-2 bg-gray-100 p-1 rounded-lg">
+<button class="px-3 py-1 text-sm rounded-md transition-colors" id="btn-role-monitor" onclick="app.switchRole('monitor')">班委</button>
+<button class="px-3 py-1 text-sm rounded-md transition-colors" id="btn-role-student" onclick="app.switchRole('student')">同学</button>
+<button class="px-3 py-1 text-sm rounded-md transition-colors" id="btn-role-guest" onclick="app.switchRole('guest')">游客</button>
+</div>
+<div class="flex items-center border-l pl-4 border-gray-200">
+<div class="text-right hidden sm:block">
+<div class="text-sm font-medium text-gray-900" id="user-name">当前用户</div>
+<div class="text-xs text-gray-500" id="user-role-label">角色</div>
+</div>
+<div class="ml-3 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+<i class="fa-solid fa-user"></i>
+</div>
+</div>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<!-- Monitor View: Dashboard & Management -->
+<div class="hidden space-y-6" id="view-monitor">
+<!-- Stats Section -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+<div class="flex items-center justify-between">
+<div>
+<p class="text-sm text-gray-500">总任务数</p>
+<p class="text-2xl font-bold text-gray-900" id="stat-total">0</p>
+</div>
+<div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
+<i class="fa-solid fa-list-check"></i>
+</div>
+</div>
+</div>
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+<div class="flex items-center justify-between">
+<div>
+<p class="text-sm text-gray-500">进行中</p>
+<p class="text-2xl font-bold text-green-600" id="stat-active">0</p>
+</div>
+<div class="p-3 bg-green-50 text-green-600 rounded-lg">
+<i class="fa-solid fa-bolt"></i>
+</div>
+</div>
+</div>
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+<div class="flex items-center justify-between">
+<div>
+<p class="text-sm text-gray-500">已关闭</p>
+<p class="text-2xl font-bold text-gray-600" id="stat-closed">0</p>
+</div>
+<div class="p-3 bg-gray-50 text-gray-600 rounded-lg">
+<i class="fa-solid fa-box-archive"></i>
+</div>
+</div>
+</div>
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+<div class="flex items-center justify-between">
+<div>
+<p class="text-sm text-gray-500">平均填写率</p>
+<p class="text-2xl font-bold text-indigo-600" id="stat-rate">0%</p>
+</div>
+<div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+<i class="fa-solid fa-chart-pie"></i>
+</div>
+</div>
+</div>
+</section>
+<!-- Charts Section -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+<h3 class="text-lg font-semibold text-gray-900 mb-4">提交趋势</h3>
+<div class="h-64 w-full" id="chart-trend"></div>
+</div>
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+<h3 class="text-lg font-semibold text-gray-900 mb-4">任务完成概览</h3>
+<div class="h-64 w-full" id="chart-progress"></div>
+</div>
+</section>
+<!-- Task Management List -->
+<section class="bg-white rounded-xl shadow-sm border border-gray-100">
+<div class="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+<h2 class="text-xl font-bold text-gray-900">任务管理</h2>
+<button class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center" onclick="app.openCreateTaskModal()">
+<i class="fa-solid fa-plus mr-2"></i> 创建新任务
+                    </button>
+</div>
+<!-- Filters -->
+<div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex flex-wrap gap-2">
+<button class="filter-btn active px-3 py-1 rounded-full text-sm bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 transition" onclick="app.filterTasks('all')">全部</button>
+<button class="filter-btn px-3 py-1 rounded-full text-sm bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 transition" onclick="app.filterTasks('active')">进行中</button>
+<button class="filter-btn px-3 py-1 rounded-full text-sm bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 transition" onclick="app.filterTasks('closed')">已关闭</button>
+</div>
+<!-- List -->
+<div class="divide-y divide-gray-100" id="monitor-task-list">
+<!-- Dynamic Content -->
+</div>
+</section>
+</div>
+<!-- Student View: Task Filling -->
+<div class="hidden space-y-6" id="view-student">
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+<div class="border-b border-gray-100">
+<nav class="flex -mb-px">
+<button class="w-1/2 py-4 text-center border-b-2 border-blue-500 text-blue-600 font-medium text-sm" id="tab-todo" onclick="app.switchStudentTab('todo')">待填写任务</button>
+<button class="w-1/2 py-4 text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm" id="tab-done" onclick="app.switchStudentTab('done')">已填写任务</button>
+</nav>
+</div>
+<div class="p-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="student-task-list">
+<!-- Dynamic Content -->
+</div>
+</div>
+</div>
+</div>
+<!-- Guest View: Read Only -->
+<div class="hidden space-y-6" id="view-guest">
+<div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 rounded-r">
+<div class="flex">
+<div class="flex-shrink-0">
+<i class="fa-solid fa-circle-info text-blue-400"></i>
+</div>
+<div class="ml-3">
+<p class="text-sm text-blue-700">
+                            您当前以游客身份浏览，仅可查看公开的任务信息。如需参与填写，请登录班级账号。
+                        </p>
+</div>
+</div>
+</div>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+<h2 class="text-xl font-bold text-gray-900 mb-4">公开任务列表</h2>
+<div class="space-y-4" id="guest-task-list">
+<!-- Dynamic Content -->
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-white border-t border-gray-200 mt-auto">
+<div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+<p class="text-center text-sm text-gray-500">© 2026 统双班务系统. All rights reserved.</p>
+</div>
+</footer>
+<!-- Toast Container -->
+<div class="fixed top-20 right-5 z-50 flex flex-col gap-2" id="toast-container"></div>
+<!-- Modal: Create/Edit Task (Monitor) -->
+<div aria-labelledby="modal-title" aria-modal="true" class="fixed inset-0 z-50 hidden" id="modal-task-editor" role="dialog">
+<div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="app.closeModal('modal-task-editor')"></div>
+<div class="fixed inset-0 z-10 overflow-y-auto">
+<div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+<div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl">
+<div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+<div class="flex justify-between items-center mb-5">
+<h3 class="text-xl font-semibold leading-6 text-gray-900" id="editor-title">创建新任务</h3>
+<button class="text-gray-400 hover:text-gray-500" onclick="app.closeModal('modal-task-editor')">
+<i class="fa-solid fa-xmark text-xl"></i>
+</button>
+</div>
+<form class="space-y-6" id="task-form">
+<input id="task-id" type="hidden"/>
+<!-- Basic Info -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+<label class="block text-sm font-medium text-gray-700">任务标题</label>
+<input class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2" id="task-title" placeholder="例如：五一假期去向统计" required="" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700">截止时间</label>
+<input class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2" id="task-deadline" required="" type="datetime-local"/>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700">任务描述</label>
+<textarea class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2" id="task-desc" placeholder="简要描述填写要求..." rows="2"></textarea>
+</div>
+<div class="flex items-center gap-4">
+<label class="flex items-center">
+<input class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" id="task-public" type="checkbox"/>
+<span class="ml-2 text-sm text-gray-700">公开可见 (游客可读)</span>
+</label>
+<label class="flex items-center">
+<input checked="" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" id="task-active" type="checkbox"/>
+<span class="ml-2 text-sm text-gray-700">立即开启</span>
+</label>
+</div>
+<!-- Dynamic Form Builder -->
+<div class="border-t border-gray-200 pt-4">
+<div class="flex justify-between items-center mb-2">
+<h4 class="text-md font-medium text-gray-900">表单字段定义</h4>
+<button class="text-sm text-blue-600 hover:text-blue-800 font-medium" onclick="app.addField()" type="button"><i class="fa-solid fa-plus mr-1"></i>添加字段</button>
+</div>
+<div class="space-y-3 bg-gray-50 p-4 rounded-lg min-h-[100px]" id="form-builder-area">
+<!-- Fields will be injected here -->
+<div class="text-center text-gray-400 text-sm py-4" id="empty-fields-msg">暂无字段，请添加</div>
+</div>
+</div>
+</form>
+</div>
+<div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+<button class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto" onclick="app.saveTask()" type="button">保存任务</button>
+<button class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto" onclick="app.closeModal('modal-task-editor')" type="button">取消</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal: Fill Task (Student) -->
+<div aria-labelledby="modal-title" aria-modal="true" class="fixed inset-0 z-50 hidden" id="modal-task-fill" role="dialog">
+<div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="app.closeModal('modal-task-fill')"></div>
+<div class="fixed inset-0 z-10 overflow-y-auto">
+<div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+<div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
+<div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+<div class="flex justify-between items-center mb-5">
+<div>
+<h3 class="text-xl font-semibold leading-6 text-gray-900" id="fill-title">填写任务</h3>
+<p class="text-sm text-gray-500 mt-1" id="fill-deadline"></p>
+</div>
+<button class="text-gray-400 hover:text-gray-500" onclick="app.closeModal('modal-task-fill')">
+<i class="fa-solid fa-xmark text-xl"></i>
+</button>
+</div>
+<form class="space-y-4" id="fill-form">
+<input id="fill-task-id" type="hidden"/>
+<div class="max-h-[60vh] overflow-y-auto pr-2" id="fill-form-fields">
+<!-- Dynamic Fields -->
+</div>
+</form>
+</div>
+<div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+<button class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto" onclick="app.submitForm()" type="button">提交表单</button>
+<button class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto" onclick="app.closeModal('modal-task-fill')" type="button">取消</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal: Confirm Action -->
+<div aria-labelledby="modal-title" aria-modal="true" class="fixed inset-0 z-50 hidden" id="modal-confirm" role="dialog">
+<div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm"></div>
+<div class="fixed inset-0 z-10 overflow-y-auto">
+<div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+<div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+<div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+<div class="sm:flex sm:items-start">
+<div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+<i class="fa-solid fa-triangle-exclamation text-red-600"></i>
+</div>
+<div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+<h3 class="text-base font-semibold leading-6 text-gray-900" id="confirm-title">确认操作</h3>
+<div class="mt-2">
+<p class="text-sm text-gray-500" id="confirm-msg">您确定要执行此操作吗？此操作无法撤销。</p>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+<button class="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto" id="confirm-btn-yes" type="button">确定</button>
+<button class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto" onclick="app.closeModal('modal-confirm')" type="button">取消</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Loading Overlay -->
+<div class="fixed inset-0 z-[60] hidden bg-white bg-opacity-80 flex items-center justify-center" id="loading-overlay">
+<div class="loader"></div>
+</div>
+<!-- Application Logic -->
+<script>
+        // --- Mock Data & API Simulation ---
+        
+        // Simulating Database
+        const db = {
+            tasks: [
+                {
+                    id: 't1',
+                    title: '五一假期去向统计',
+                    description: '请各位同学如实填写假期去向及联系方式，以便班委统计。',
+                    status: 'active',
+                    isPublic: true,
+                    deadline: '2026-05-01T23:59',
+                    createdAt: '2026-04-20T10:00',
+                    schema: [
+                        { id: 'f1', label: '姓名', type: 'text', required: true },
+                        { id: 'f2', label: '去向地点', type: 'text', required: true },
+                        { id: 'f3', label: '是否离校', type: 'radio', options: ['是', '否'], required: true },
+                        { id: 'f4', label: '紧急联系人', type: 'text', required: false }
+                    ]
+                },
+                {
+                    id: 't2',
+                    title: '期中教学反馈',
+                    description: '针对本学期前半段课程的教学质量进行匿名反馈。',
+                    status: 'active',
+                    isPublic: false,
+                    deadline: '2026-04-30T12:00',
+                    createdAt: '2026-04-15T09:00',
+                    schema: [
+                        { id: 'f1', label: '最喜欢的课程', type: 'select', options: ['高数', '英语', '专业课', '体育'], required: true },
+                        { id: 'f2', label: '建议内容', type: 'textarea', required: false }
+                    ]
+                },
+                {
+                    id: 't3',
+                    title: '上学期期末成绩确认',
+                    description: '已截止归档。',
+                    status: 'closed',
+                    isPublic: true,
+                    deadline: '2026-03-01T00:00',
+                    createdAt: '2026-02-20T10:00',
+                    schema: []
+                }
+            ],
+            submissions: [
+                { id: 's1', taskId: 't1', userId: 'u1', content: { f1: '张三', f2: '北京', f3: '是', f4: '13800000000' }, submitTime: '2026-04-21T14:30' },
+                { id: 's2', taskId: 't1', userId: 'u2', content: { f1: '李四', f2: '上海', f3: '否', f4: '' }, submitTime: '2026-04-22T09:15' },
+                { id: 's3', taskId: 't2', userId: 'u1', content: { f1: '高数', f2: '老师讲课很清晰' }, submitTime: '2026-04-25T11:00' }
+            ],
+            users: [
+                { id: 'u1', name: '演示同学', role: 'student' },
+                { id: 'admin', name: '演示班委', role: 'monitor' }
+            ]
+        };
+
+        // Simulating API Calls
+        const api = {
+            getTasks: () => Promise.resolve([...db.tasks]),
+            getTaskById: (id) => Promise.resolve(db.tasks.find(t => t.id === id)),
+            createTask: (task) => {
+                const newTask = { ...task, id: 't' + Date.now(), createdAt: new Date().toISOString() };
+                db.tasks.unshift(newTask);
+                return Promise.resolve(newTask);
+            },
+            updateTask: (id, data) => {
+                const idx = db.tasks.findIndex(t => t.id === id);
+                if (idx !== -1) {
+                    db.tasks[idx] = { ...db.tasks[idx], ...data };
+                    return Promise.resolve(db.tasks[idx]);
+                }
+                return Promise.reject('Task not found');
+            },
+            deleteTask: (id) => {
+                db.tasks = db.tasks.filter(t => t.id !== id);
+                db.submissions = db.submissions.filter(s => s.taskId !== id);
+                return Promise.resolve(true);
+            },
+            getSubmissions: (taskId) => Promise.resolve(db.submissions.filter(s => s.taskId === taskId)),
+            submitForm: (data) => {
+                const existing = db.submissions.find(s => s.taskId === data.taskId && s.userId === data.userId);
+                if (existing) {
+                    // Update
+                    Object.assign(existing, data);
+                    return Promise.resolve(existing);
+                } else {
+                    // Create
+                    const newSub = { ...data, id: 's' + Date.now(), submitTime: new Date().toISOString() };
+                    db.submissions.push(newSub);
+                    return Promise.resolve(newSub);
+                }
+            }
+        };
+
+        // --- Application Logic ---
+
+        const app = {
+            currentUser: { id: 'u1', name: '演示同学', role: 'student' }, // Default role
+            currentTasks: [],
+            editingFields: [],
+            studentTab: 'todo',
+            charts: { trend: null, progress: null },
+            monitorFilter: 'all',
+
+            init: function() {
+                this.updateRoleUI();
+                this.loadData();
+                
+                // Setup global event listeners for auto-save in fill form
+                document.getElementById('fill-form').addEventListener('input', this.handleAutoSave);
+            },
+
+            // --- Role & View Management ---
+
+            switchRole: function(role) {
+                if (role === 'monitor') this.currentUser = { id: 'admin', name: '演示班委', role: 'monitor' };
+                else if (role === 'student') this.currentUser = { id: 'u1', name: '演示同学', role: 'student' };
+                else this.currentUser = { id: 'guest', name: '游客', role: 'guest' };
+
+                this.updateRoleUI();
+                this.loadData();
+                this.showToast(`已切换至：${this.currentUser.name}`, 'info');
+            },
+
+            updateRoleUI: function() {
+                // Update Header
+                document.getElementById('user-name').textContent = this.currentUser.name;
+                const roleLabels = { 'monitor': '班委', 'student': '同学', 'guest': '游客' };
+                document.getElementById('user-role-label').textContent = roleLabels[this.currentUser.role];
+
+                // Update Role Buttons
+                ['monitor', 'student', 'guest'].forEach(r => {
+                    const btn = document.getElementById(`btn-role-${r}`);
+                    if (this.currentUser.role === r) {
+                        btn.className = "px-3 py-1 text-sm rounded-md transition-colors bg-white shadow text-blue-600 font-bold";
+                    } else {
+                        btn.className = "px-3 py-1 text-sm rounded-md transition-colors text-gray-500 hover:bg-gray-200";
+                    }
+                });
+
+                // Toggle Main Views
+                document.getElementById('view-monitor').classList.add('hidden');
+                document.getElementById('view-student').classList.add('hidden');
+                document.getElementById('view-guest').classList.add('hidden');
+
+                if (this.currentUser.role === 'monitor') {
+                    document.getElementById('view-monitor').classList.remove('hidden');
+                } else if (this.currentUser.role === 'student') {
+                    document.getElementById('view-student').classList.remove('hidden');
+                } else {
+                    document.getElementById('view-guest').classList.remove('hidden');
+                }
+            },
+
+            // --- Data Loading & Rendering ---
+
+            loadData: async function() {
+                this.showLoading(true);
+                try {
+                    this.currentTasks = await api.getTasks();
+                    
+                    if (this.currentUser.role === 'monitor') {
+                        this.renderMonitorDashboard();
+                        this.renderMonitorList();
+                    } else if (this.currentUser.role === 'student') {
+                        this.renderStudentList();
+                    } else {
+                        this.renderGuestList();
+                    }
+                } catch (error) {
+                    this.showToast('数据加载失败', 'error');
+                    console.error(error);
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+
+            // --- Monitor Features ---
+
+            renderMonitorDashboard: function() {
+                const tasks = this.currentTasks;
+                const active = tasks.filter(t => t.status === 'active').length;
+                const closed = tasks.filter(t => t.status === 'closed').length;
+                
+                document.getElementById('stat-total').textContent = tasks.length;
+                document.getElementById('stat-active').textContent = active;
+                document.getElementById('stat-closed').textContent = closed;
+
+                // Calculate avg completion rate
+                let totalSubmissions = 0;
+                let potentialSubmissions = 0;
+                tasks.forEach(t => {
+                    if (t.status === 'active' || t.status === 'closed') {
+                        const subs = db.submissions.filter(s => s.taskId === t.id).length;
+                        totalSubmissions += subs;
+                        potentialSubmissions += 40; // Assuming class size 40 for demo
+                    }
+                });
+                const rate = potentialSubmissions > 0 ? Math.round((totalSubmissions / potentialSubmissions) * 100) : 0;
+                document.getElementById('stat-rate').textContent = rate + '%';
+
+                this.renderCharts(tasks);
+            },
+
+            renderCharts: function(tasks) {
+                // Trend Chart (Mock Data generation)
+                const trendDom = document.getElementById('chart-trend');
+                if (this.charts.trend) this.charts.trend.dispose();
+                this.charts.trend = echarts.init(trendDom);
+                
+                this.charts.trend.setOption({
+                    tooltip: { trigger: 'axis' },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
+                    yAxis: { type: 'value' },
+                    series: [{
+                        data: [5, 12, 8, 15, 10, 20, 25],
+                        type: 'line',
+                        smooth: true,
+                        itemStyle: { color: '#3b82f6' },
+                        areaStyle: { opacity: 0.1 }
+                    }]
+                });
+
+                // Progress Chart
+                const progressDom = document.getElementById('chart-progress');
+                if (this.charts.progress) this.charts.progress.dispose();
+                this.charts.progress = echarts.init(progressDom);
+
+                const activeCount = tasks.filter(t => t.status === 'active').length;
+                const closedCount = tasks.filter(t => t.status === 'closed').length;
+
+                this.charts.progress.setOption({
+                    tooltip: { trigger: 'item' },
+                    legend: { bottom: '0%' },
+                    series: [{
+                        name: '任务状态',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                        label: { show: false, position: 'center' },
+                        emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
+                        data: [
+                            { value: activeCount, name: '进行中', itemStyle: { color: '#22c55e' } },
+                            { value: closedCount, name: '已关闭', itemStyle: { color: '#94a3b8' } }
+                        ]
+                    }]
+                });
+
+                window.addEventListener('resize', () => {
+                    this.charts.trend.resize();
+                    this.charts.progress.resize();
+                });
+            },
+
+            renderMonitorList: function() {
+                const listEl = document.getElementById('monitor-task-list');
+                listEl.innerHTML = '';
+                
+                let filtered = this.currentTasks;
+                if (this.monitorFilter !== 'all') {
+                    filtered = filtered.filter(t => t.status === this.monitorFilter);
+                }
+
+                if (filtered.length === 0) {
+                    listEl.innerHTML = `<div class="p-8 text-center text-gray-500">暂无任务</div>`;
+                    return;
+                }
+
+                filtered.forEach(task => {
+                    const subs = db.submissions.filter(s => s.taskId === task.id).length;
+                    const isExpired = new Date(task.deadline) < new Date() && task.status === 'active';
+                    
+                    const statusBadge = task.status === 'active' 
+                        ? (isExpired ? '<span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">已过期</span>' : '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">进行中</span>')
+                        : '<span class="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded">已关闭</span>';
+
+                    const html = `
+                        <div class="p-6 hover:bg-gray-50 transition-colors">
+                            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3 mb-1">
+                                        <h4 class="text-lg font-bold text-gray-900">${task.title}</h4>
+                                        ${statusBadge}
+                                        ${task.isPublic ? '<i class="fa-solid fa-globe text-gray-400 text-xs" title="公开"></i>' : ''}
+                                    </div>
+                                    <p class="text-sm text-gray-500 mb-2 line-clamp-1">${task.description}</p>
+                                    <div class="flex items-center gap-4 text-xs text-gray-400">
+                                        <span><i class="fa-regular fa-clock mr-1"></i>截止: ${new Date(task.deadline).toLocaleString()}</span>
+                                        <span><i class="fa-solid fa-user-pen mr-1"></i>提交: ${subs}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="app.exportData('${task.id}')" class="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded" title="导出数据">
+                                        <i class="fa-solid fa-file-excel"></i>
+                                    </button>
+                                    <button onclick="app.editTask('${task.id}')" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded" title="编辑">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button onclick="app.confirmDeleteTask('${task.id}')" class="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded" title="删除">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    listEl.insertAdjacentHTML('beforeend', html);
+                });
+            },
+
+            filterTasks: function(status) {
+                this.monitorFilter = status;
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('bg-blue-50', 'text-blue-600', 'border-blue-200');
+                    btn.classList.add('bg-white', 'text-gray-600');
+                });
+                event.target.classList.remove('bg-white', 'text-gray-600');
+                event.target.classList.add('bg-blue-50', 'text-blue-600', 'border-blue-200');
+                this.renderMonitorList();
+            },
+
+            // --- Student Features ---
+
+            switchStudentTab: function(tab) {
+                this.studentTab = tab;
+                const tabTodo = document.getElementById('tab-todo');
+                const tabDone = document.getElementById('tab-done');
+                
+                if (tab === 'todo') {
+                    tabTodo.className = "w-1/2 py-4 text-center border-b-2 border-blue-500 text-blue-600 font-medium text-sm";
+                    tabDone.className = "w-1/2 py-4 text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm";
+                } else {
+                    tabTodo.className = "w-1/2 py-4 text-center border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm";
+                    tabDone.className = "w-1/2 py-4 text-center border-b-2 border-blue-500 text-blue-600 font-medium text-sm";
+                }
+                this.renderStudentList();
+            },
+
+            renderStudentList: function() {
+                const listEl = document.getElementById('student-task-list');
+                listEl.innerHTML = '';
+
+                const tasks = this.currentTasks.filter(t => t.status === 'active');
+                
+                tasks.forEach(task => {
+                    const submission = db.submissions.find(s => s.taskId === task.id && s.userId === this.currentUser.id);
+                    const isSubmitted = !!submission;
+                    const isExpired = new Date(task.deadline) < new Date();
+
+                    // Filter logic based on tab
+                    if (this.studentTab === 'todo' && (isSubmitted || isExpired)) return;
+                    if (this.studentTab === 'done' && !isSubmitted) return;
+
+                    const card = `
+                        <div class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col h-full">
+                            <div class="flex-1">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h4 class="font-bold text-gray-900">${task.title}</h4>
+                                    ${isExpired ? '<span class="text-xs text-red-500 font-medium">已过期</span>' : ''}
+                                </div>
+                                <p class="text-sm text-gray-500 mb-4 line-clamp-2">${task.description}</p>
+                                <div class="text-xs text-gray-400 mb-4">
+                                    截止: ${new Date(task.deadline).toLocaleString()}
+                                </div>
+                            </div>
+                            <div class="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
+                                <span class="text-xs ${isSubmitted ? 'text-green-600' : 'text-gray-400'}">
+                                    ${isSubmitted ? '已填写' : '待填写'}
+                                </span>
+                                ${!isExpired ? `
+                                    <button onclick="app.openFillModal('${task.id}')" class="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-100 transition-colors">
+                                        ${isSubmitted ? '修改' : '填写'}
+                                    </button>
+                                ` : '<span class="text-xs text-gray-400">不可操作</span>'}
+                            </div>
+                        </div>
+                    `;
+                    listEl.insertAdjacentHTML('beforeend', card);
+                });
+
+                if (listEl.innerHTML === '') {
+                    listEl.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">暂无任务</div>`;
+                }
+            },
+
+            // --- Guest Features ---
+
+            renderGuestList: function() {
+                const listEl = document.getElementById('guest-task-list');
+                listEl.innerHTML = '';
+                
+                const tasks = this.currentTasks.filter(t => t.isPublic && t.status === 'active');
+                
+                if (tasks.length === 0) {
+                    listEl.innerHTML = `<div class="text-center text-gray-500 py-4">暂无公开任务</div>`;
+                    return;
+                }
+
+                tasks.forEach(task => {
+                    const html = `
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h4 class="font-bold text-gray-900">${task.title}</h4>
+                            <p class="text-sm text-gray-500 mt-1">${task.description}</p>
+                            <div class="mt-2 text-xs text-gray-400">截止时间: ${new Date(task.deadline).toLocaleString()}</div>
+                        </div>
+                    `;
+                    listEl.insertAdjacentHTML('beforeend', html);
+                });
+            },
+
+            // --- Task Creation & Editing (Form Builder) ---
+
+            openCreateTaskModal: function() {
+                this.editingFields = [];
+                document.getElementById('task-form').reset();
+                document.getElementById('task-id').value = '';
+                document.getElementById('editor-title').textContent = '创建新任务';
+                this.renderBuilderFields();
+                this.openModal('modal-task-editor');
+            },
+
+            editTask: async function(id) {
+                const task = await api.getTaskById(id);
+                if (!task) return;
+
+                document.getElementById('task-id').value = task.id;
+                document.getElementById('task-title').value = task.title;
+                document.getElementById('task-desc').value = task.description;
+                document.getElementById('task-deadline').value = task.deadline;
+                document.getElementById('task-public').checked = task.isPublic;
+                document.getElementById('task-active').checked = task.status === 'active';
+                
+                this.editingFields = JSON.parse(JSON.stringify(task.schema)); // Deep copy
+                this.renderBuilderFields();
+                
+                document.getElementById('editor-title').textContent = '编辑任务';
+                this.openModal('modal-task-editor');
+            },
+
+            addField: function() {
+                this.editingFields.push({
+                    id: 'f_' + Date.now(),
+                    label: '新字段',
+                    type: 'text',
+                    required: false,
+                    options: '选项1,选项2' // For select/radio/checkbox
+                });
+                this.renderBuilderFields();
+            },
+
+            removeField: function(index) {
+                this.editingFields.splice(index, 1);
+                this.renderBuilderFields();
+            },
+
+            updateField: function(index, key, value) {
+                this.editingFields[index][key] = value;
+                if (key === 'type') {
+                    this.renderBuilderFields(); // Re-render to show/hide options input
+                }
+            },
+
+            renderBuilderFields: function() {
+                const container = document.getElementById('form-builder-area');
+                if (this.editingFields.length === 0) {
+                    container.innerHTML = `<div class="text-center text-gray-400 text-sm py-4" id="empty-fields-msg">暂无字段，请添加</div>`;
+                    return;
+                }
+
+                container.innerHTML = '';
+                this.editingFields.forEach((field, index) => {
+                    const needsOptions = ['select', 'radio', 'checkbox'].includes(field.type);
+                    
+                    const html = `
+                        <div class="bg-white p-3 rounded border border-gray-200 shadow-sm relative group">
+                            <button onclick="app.removeField(${index})" class="absolute top-2 right-2 text-gray-300 hover:text-red-500">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pr-6">
+                                <div>
+                                    <label class="text-xs text-gray-500">字段标签</label>
+                                    <input type="text" value="${field.label}" onchange="app.updateField(${index}, 'label', this.value)" class="w-full text-sm border-gray-300 rounded border p-1.5 focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-gray-500">字段类型</label>
+                                    <select onchange="app.updateField(${index}, 'type', this.value)" class="w-full text-sm border-gray-300 rounded border p-1.5 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="text" ${field.type === 'text' ? 'selected' : ''}>文本</option>
+                                        <option value="number" ${field.type === 'number' ? 'selected' : ''}>数字</option>
+                                        <option value="date" ${field.type === 'date' ? 'selected' : ''}>日期</option>
+                                        <option value="textarea" ${field.type === 'textarea' ? 'selected' : ''}>多行文本</option>
+                                        <option value="radio" ${field.type === 'radio' ? 'selected' : ''}>单选</option>
+                                        <option value="checkbox" ${field.type === 'checkbox' ? 'selected' : ''}>多选</option>
+                                        <option value="select" ${field.type === 'select' ? 'selected' : ''}>下拉菜单</option>
+                                    </select>
+                                </div>
+                                ${needsOptions ? `
+                                    <div class="md:col-span-2">
+                                        <label class="text-xs text-gray-500">选项 (逗号分隔)</label>
+                                        <input type="text" value="${field.options || ''}" onchange="app.updateField(${index}, 'options', this.value)" class="w-full text-sm border-gray-300 rounded border p-1.5 focus:ring-blue-500 focus:border-blue-500" placeholder="例如: 选项A,选项B,选项C">
+                                    </div>
+                                ` : ''}
+                                <div class="md:col-span-2 flex items-center">
+                                    <input type="checkbox" id="req-${index}" ${field.required ? 'checked' : ''} onchange="app.updateField(${index}, 'required', this.checked)" class="rounded border-gray-300 text-blue-600 mr-2">
+                                    <label for="req-${index}" class="text-sm text-gray-700">必填项</label>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+            },
+
+            saveTask: async function() {
+                const title = document.getElementById('task-title').value;
+                const deadline = document.getElementById('task-deadline').value;
+                
+                if (!title || !deadline) {
+                    this.showToast('请填写标题和截止时间', 'error');
+                    return;
+                }
+
+                const taskData = {
+                    title: title,
+                    description: document.getElementById('task-desc').value,
+                    deadline: deadline,
+                    isPublic: document.getElementById('task-public').checked,
+                    status: document.getElementById('task-active').checked ? 'active' : 'closed',
+                    schema: this.editingFields
+                };
+
+                const id = document.getElementById('task-id').value;
+
+                this.showLoading(true);
+                try {
+                    if (id) {
+                        await api.updateTask(id, taskData);
+                        this.showToast('任务更新成功', 'success');
+                    } else {
+                        await api.createTask(taskData);
+                        this.showToast('任务创建成功', 'success');
+                    }
+                    this.closeModal('modal-task-editor');
+                    this.loadData();
+                } catch (error) {
+                    this.showToast('保存失败', 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+
+            confirmDeleteTask: function(id) {
+                document.getElementById('confirm-title').textContent = '删除任务';
+                document.getElementById('confirm-msg').textContent = '删除任务将同时删除所有已收集的表单数据，且无法恢复。确定要删除吗？';
+                
+                const btn = document.getElementById('confirm-btn-yes');
+                btn.onclick = async () => {
+                    this.showLoading(true);
+                    try {
+                        await api.deleteTask(id);
+                        this.showToast('任务已删除', 'success');
+                        this.loadData();
+                        this.closeModal('modal-confirm');
+                    } catch (e) {
+                        this.showToast('删除失败', 'error');
+                    } finally {
+                        this.showLoading(false);
+                    }
+                };
+                
+                this.openModal('modal-confirm');
+            },
+
+            // --- Form Filling (Student) ---
+
+            openFillModal: async function(taskId) {
+                const task = await api.getTaskById(taskId);
+                if (!task) return;
+
+                document.getElementById('fill-task-id').value = task.id;
+                document.getElementById('fill-title').textContent = task.title;
+                document.getElementById('fill-deadline').textContent = `截止时间: ${new Date(task.deadline).toLocaleString()}`;
+
+                const container = document.getElementById('fill-form-fields');
+                container.innerHTML = '';
+
+                // Check for existing submission
+                const existing = db.submissions.find(s => s.taskId === taskId && s.userId === this.currentUser.id);
+                const savedData = existing ? existing.content : {};
+
+                // Check local storage for draft
+                const localDraftKey = `draft_${taskId}_${this.currentUser.id}`;
+                const localDraft = localStorage.getItem(localDraftKey);
+                const draftData = localDraft ? JSON.parse(localDraft) : {};
+
+                // Merge: Local draft takes precedence over old submission if exists
+                const formData = { ...savedData, ...draftData };
+
+                task.schema.forEach(field => {
+                    const value = formData[field.id] || '';
+                    let inputHtml = '';
+
+                    const commonAttrs = `name="${field.id}" ${field.required ? 'required' : ''}`;
+                    const labelClass = "block text-sm font-medium text-gray-700 mb-1";
+                    const inputClass = "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2";
+
+                    if (field.type === 'textarea') {
+                        inputHtml = `<textarea ${commonAttrs} rows="3" class="${inputClass}">${value}</textarea>`;
+                    } else if (field.type === 'select') {
+                        const opts = field.options ? field.options.split(/,|，/) : [];
+                        inputHtml = `
+                            <select ${commonAttrs} class="${inputClass}">
+                                <option value="">请选择</option>
+                                ${opts.map(o => `<option value="${o.trim()}" ${value === o.trim() ? 'selected' : ''}>${o.trim()}</option>`).join('')}
+                            </select>`;
+                    } else if (field.type === 'radio') {
+                        const opts = field.options ? field.options.split(/,|，/) : [];
+                        inputHtml = `<div class="mt-2 space-y-2">
+                            ${opts.map(o => `
+                                <div class="flex items-center">
+                                    <input id="r_${field.id}_${o}" type="radio" name="${field.id}" value="${o.trim()}" ${value === o.trim() ? 'checked' : ''} class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                    <label for="r_${field.id}_${o}" class="ml-2 block text-sm text-gray-900">${o.trim()}</label>
+                                </div>
+                            `).join('')}
+                        </div>`;
+                    } else if (field.type === 'checkbox') {
+                        // Handling checkbox array is tricky in simple HTML form data, 
+                        // we will store as comma separated string for simplicity in this demo
+                        const vals = Array.isArray(value) ? value : (value ? value.split(',') : []);
+                        const opts = field.options ? field.options.split(/,|，/) : [];
+                        inputHtml = `<div class="mt-2 space-y-2">
+                            ${opts.map(o => `
+                                <div class="flex items-center">
+                                    <input id="c_${field.id}_${o}" type="checkbox" name="${field.id}" value="${o.trim()}" ${vals.includes(o.trim()) ? 'checked' : ''} class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <label for="c_${field.id}_${o}" class="ml-2 block text-sm text-gray-900">${o.trim()}</label>
+                                </div>
+                            `).join('')}
+                        </div>`;
+                    } else {
+                        inputHtml = `<input type="${field.type}" ${commonAttrs} value="${value}" class="${inputClass}">`;
+                    }
+
+                    const html = `
+                        <div class="field-group mb-4" data-field-id="${field.id}">
+                            <label class="${labelClass}">${field.label} ${field.required ? '<span class="text-red-500">*</span>' : ''}</label>
+                            ${inputHtml}
+                            <p class="text-xs text-red-500 mt-1 hidden error-msg">此项为必填项</p>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+
+                this.openModal('modal-task-fill');
+            },
+
+            handleAutoSave: function(e) {
+                const form = document.getElementById('fill-form');
+                const taskId = document.getElementById('fill-task-id').value;
+                const userId = app.currentUser.id;
+                
+                // Simple serialize
+                const formData = new FormData(form);
+                const data = {};
+                
+                // Handle checkboxes manually for array-like behavior
+                form.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+                    if (!data[cb.name]) data[cb.name] = [];
+                    data[cb.name].push(cb.value);
+                });
+
+                formData.forEach((value, key) => {
+                    if (!data[key]) data[key] = value; // Don't overwrite checkboxes if they exist
+                });
+
+                localStorage.setItem(`draft_${taskId}_${userId}`, JSON.stringify(data));
+            },
+
+            submitForm: async function() {
+                const form = document.getElementById('fill-form');
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+
+                const taskId = document.getElementById('fill-task-id').value;
+                
+                // Collect Data
+                const formData = new FormData(form);
+                const content = {};
+                
+                // Checkboxes
+                form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    if (!content[cb.name]) content[cb.name] = [];
+                });
+                
+                formData.forEach((value, key) => {
+                    if (Array.isArray(content[key])) {
+                        content[key].push(value);
+                    } else {
+                        content[key] = value;
+                    }
+                });
+
+                // Clean up empty arrays (unselected checkboxes)
+                for (let key in content) {
+                    if (Array.isArray(content[key]) && content[key].length === 0) {
+                        delete content[key];
+                    }
+                }
+
+                this.showLoading(true);
+                try {
+                    await api.submitForm({
+                        taskId: taskId,
+                        userId: this.currentUser.id,
+                        content: content
+                    });
+                    
+                    // Clear draft
+                    localStorage.removeItem(`draft_${taskId}_${this.currentUser.id}`);
+                    
+                    this.showToast('提交成功！', 'success');
+                    this.closeModal('modal-task-fill');
+                    this.loadData();
+                } catch (error) {
+                    this.showToast('提交失败', 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+
+            // --- Utilities ---
+
+            exportData: async function(taskId) {
+                this.showLoading(true);
+                try {
+                    const task = await api.getTaskById(taskId);
+                    const subs = await api.getSubmissions(taskId);
+                    
+                    if (subs.length === 0) {
+                        this.showToast('暂无数据可导出', 'info');
+                        this.showLoading(false);
+                        return;
+                    }
+
+                    // Generate CSV
+                    const headers = ['提交ID', '提交人', '提交时间', ...task.schema.map(f => f.label)];
+                    const rows = subs.map(s => {
+                        const values = task.schema.map(f => {
+                            const val = s.content[f.id];
+                            if (Array.isArray(val)) return val.join('; ');
+                            return val || '';
+                        });
+                        return [s.id, `用户${s.userId}`, new Date(s.submitTime).toLocaleString(), ...values];
+                    });
+
+                    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+                        + headers.join(",") + "\n" 
+                        + rows.map(e => e.join(",")).join("\n");
+
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", `${task.title}_导出数据.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    this.showToast('导出成功', 'success');
+                } catch (e) {
+                    this.showToast('导出失败', 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            },
+
+            openModal: function(id) {
+                const el = document.getElementById(id);
+                el.classList.remove('hidden');
+                // Simple animation class handling could go here
+            },
+
+            closeModal: function(id) {
+                document.getElementById(id).classList.add('hidden');
+            },
+
+            showLoading: function(show) {
+                const el = document.getElementById('loading-overlay');
+                if (show) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            },
+
+            showToast: function(msg, type = 'info') {
+                const container = document.getElementById('toast-container');
+                const el = document.createElement('div');
+                
+                const colors = {
+                    success: 'bg-green-500',
+                    error: 'bg-red-500',
+                    info: 'bg-blue-500'
+                };
+                
+                const icons = {
+                    success: 'fa-check-circle',
+                    error: 'fa-times-circle',
+                    info: 'fa-info-circle'
+                };
+
+                el.className = `toast-item flex items-center w-full max-w-xs p-4 text-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800 ${colors[type]}`;
+                el.innerHTML = `
+                    <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg bg-white bg-opacity-20">
+                        <i class="fa-solid ${icons[type]}"></i>
+                    </div>
+                    <div class="ml-3 text-sm font-normal">${msg}</div>
+                `;
+
+                container.appendChild(el);
+
+                setTimeout(() => {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateX(100%)';
+                    el.style.transition = 'all 0.3s ease';
+                    setTimeout(() => el.remove(), 300);
+                }, 3000);
+            }
+        };
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+
+    </script>
+</body>
+</html>

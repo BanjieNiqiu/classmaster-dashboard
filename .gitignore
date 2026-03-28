@@ -1,0 +1,76 @@
+# 依赖目录
+node_modules/
+
+# 环境配置文件
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# 日志文件
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 操作系统生成文件
+.DS_Store
+.Trashes
+.Spotlight-V100
+.fseventsd
+.VolumeIcon.icns
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+._*
+
+# IDE配置文件和临时文件
+.vscode/
+.idea/
+*.swp
+*.swo
+.editorconfig
+
+# 构建输出目录和临时目录
+dist/
+build/
+coverage/
+.next/
+out/
+.nuxt/
+
+# 缓存目录和临时文件
+.npm
+.yarn
+.pnp
+.cache/
+.parcel-cache/
+.turbo/
+
+# 测试相关文件
+.nyc_output/
+cypress/videos/
+cypress/screenshots/
+
+# 包管理器锁定文件
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# 部署和构建相关
+.vercel/
+.now/
+.output/
+
+# 其他忽略项
+.tmp/
+.temp/
+*.tmp
+*.temp
+.hg/
+.svn/
+.ftpconfig

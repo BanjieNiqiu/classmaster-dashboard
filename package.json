@@ -1,0 +1,70 @@
+{
+  "name": "class-affairs-system",
+  "version": "1.0.0",
+  "description": "统双班务网页 - 班级事务综合管理系统。基于Vercel Serverless Functions的全栈Web应用，包含用户管理、班务收集、物资借用、课程查询、文档共享、LLM智能问答和后台管理系统。",
+  "main": "./api/index.js",
+  "scripts": {
+    "dev": "nodemon api/index.js",
+    "start": "node api/index.js",
+    "test": "jest --coverage",
+    "test:unit": "jest unit-tests/",
+    "test:integration": "jest integration-tests/",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "format": "prettier --write .",
+    "build": "npm run lint && npm test"
+  },
+  "keywords": [
+    "class-management",
+    "school-system",
+    "vercel",
+    "serverless",
+    "fullstack",
+    "llm",
+    "ai-assistant",
+    "education-tech"
+  ],
+  "author": "统双班务开发团队 <class-affairs@example.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/example/class-affairs-system.git"
+  },
+  "bugs": {
+    "url": "https://github.com/example/class-affairs-system/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "bcrypt": "^5.1.0",
+    "jsonwebtoken": "^9.0.0",
+    "multer": "^1.4.5-lts.1",
+    "exceljs": "^4.4.0",
+    "uuid": "^9.0.0",
+    "axios": "^1.6.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "mongoose": "^7.5.0",
+    "formidable": "^3.5.1",
+    "winston": "^3.8.2",
+    "helmet": "^7.0.0",
+    "rate-limiter-flexible": "^3.1.0",
+    "validator": "^13.11.0",
+    "mongodb": "^5.7.0",
+    "openai": "^4.28.2",
+    "cheerio": "^1.0.0-rc.12",
+    "archiver": "^5.3.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "jest": "^29.6.1",
+    "supertest": "^6.3.3",
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.3",
+    "@vercel/node": "^2.2.3",
+    "dotenv": "^16.3.1",
+    "cross-env": "^7.0.3"
+  }
+}
