@@ -1,58 +1,47 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": null,
-  "routes": [
+  "builds": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api",
-      "methods": [
-        "GET",
-        "POST",
-        "PUT",
-        "DELETE"
-      ]
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html",
-      "headers": {
-        "Cache-Control": "public, max-age=0, must-revalidate"
+      "src": "api/*.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["api/**"]
       }
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/tasks/:path*",
-      "destination": "/tasks.html"
+      "src": "/api/(.*)",
+      "dest": "/api/$1",
+      "methods": ["GET", "POST", "PUT", "DELETE"]
     },
     {
-      "source": "/items/:path*",
-      "destination": "/items.html"
+      "src": "/tasks/",
+      "dest": "/tasks.html"
     },
     {
-      "source": "/courses/:path*",
-      "destination": "/courses.html"
+      "src": "/items/",
+      "dest": "/items.html"
     },
     {
-      "source": "/documents/:path*",
-      "destination": "/documents.html"
+      "src": "/courses/",
+      "dest": "/courses.html"
     },
     {
-      "source": "/admin/:path*",
-      "destination": "/admin.html"
+      "src": "/documents/",
+      "dest": "/documents.html"
     },
     {
-      "source": "/profile/:path*",
-      "destination": "/profile.html"
-    }
-  ],
-  "redirects": [
+      "src": "/admin/",
+      "dest": "/admin.html"
+    },
     {
-      "source": "/",
-      "destination": "/dashboard",
-      "permanent": true
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "headers": [
@@ -83,50 +72,5 @@
         }
       ]
     }
-  ],
-  "functions": {
-    "api/*.js": {
-      "runtime": "nodejs18.x",
-      "memory": 1024,
-      "maxDuration": 10,
-      "region": "icn1" 
-    }
-  },
-  "env": {
-    "DATABASE_URL": {
-      "description": "数据库连接字符串，用于连接MongoDB或Supabase等外部数据库服务",
-      "value": "$DATABASE_URL"
-    },
-    "LLM_API_KEY": {
-      "description": "大语言模型API密钥，用于调用GPT或其他LLM服务进行智能问答和语义检索",
-      "value": "$LLM_API_KEY"
-    },
-    "STORAGE_OSS_URL": {
-      "description": "对象存储服务（OSS）地址，用于存储上传的文档资源文件",
-      "value": "$STORAGE_OSS_URL"
-    },
-    "JWT_SECRET": {
-      "description": "JWT签名密钥，用于用户身份认证Token的生成与验证",
-      "value": "$JWT_SECRET"
-    },
-    "NODE_ENV": "production"
-  },
-  "regions": [
-    "icn1"
-  ],
-  "cache": ".next/cache",
-  "cleanUrls": true,
-  "trailingSlash": false,
-  "scope": null,
-  "github": {
-    "enabled": true
-  },
-  "projectSettings": {
-    "framework": null,
-    "serverlessFunctionRegion": "icn1",
-    "installCommand": "npm install",
-    "buildCommand": "npm run build",
-    "outputDirectory": "dist",
-    "devCommand": "npm run dev"
-  }
+  ]
 }
