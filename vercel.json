@@ -12,32 +12,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1",
-      "methods": ["GET", "POST", "PUT", "DELETE"]
-    },
-    {
-      "src": "/tasks/",
-      "dest": "/tasks.html"
-    },
-    {
-      "src": "/items/",
-      "dest": "/items.html"
-    },
-    {
-      "src": "/courses/",
-      "dest": "/courses.html"
-    },
-    {
-      "src": "/documents/",
-      "dest": "/documents.html"
-    },
-    {
-      "src": "/admin/",
-      "dest": "/admin.html"
-    },
-    {
-      "src": "/",
-      "dest": "/index.html"
+      "dest": "/api/$1"
     },
     {
       "src": "/(.*)",
