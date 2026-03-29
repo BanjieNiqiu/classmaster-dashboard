@@ -2,16 +2,13 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.js", // 只需要指定主入口文件
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["api/**"] // 确保所有 api 目录下的文件都被包含
-      }
+      "src": "api/index.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
-    { "handle": "filesystem" },        // 优先处理静态文件 (index.html, login.html, etc.)
-    { "src": "/api/(.*)", "dest": "/api/index.js" }, // 将所有 /api/* 请求发送到 api/index.js
-    { "src": "/(.*)", "dest": "/index.html" }       // 任何其他请求都返回 index.html (适用于SPA)
+    { "handle": "filesystem" },
+    { "src": "/api/(.*)", "dest": "/api/index.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
