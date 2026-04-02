@@ -4,7 +4,7 @@
  * 部署于 Vercel Serverless Functions (/api/llm)
  */
 
-import { Configuration, OpenAIApi } from 'openai';
+import OpenAI from 'openai';
 import { v4 as uuidv4 } from 'uuid';
 
 // 模拟数据库连接（实际应替换为 MongoDB/Supabase 等）
@@ -170,11 +170,9 @@ async function semanticSearch(queryEmbedding, items, embeddingField = 'llm_embed
  * @returns {OpenAIApi} OpenAI API实例
  */
 function getOpenAIClient() {
-  const configuration = new Configuration({
-    apiKey: process.env.LLM_API_KEY,
-    basePath: process.env.OPENAI_API_BASE_PATH // 支持自定义端点
-  });
-  return new OpenAIApi(configuration);
+  const apiKey = process.env.LLM_API_KEY;
+  const baseURL = process.env.LLM_API_BASE_PATH || process.env.OPENAI_API_BASE_PATH;
+  return new OpenAI({ apiKey, baseURL });
 }
 
 /**
@@ -192,36 +190,25 @@ async function callLLM(prompt, options = {}, onChunk = null) {
     temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.7'),
     max_tokens: parseInt(process.env.LLM_MAX_TOKENS || '1000'),
     top_p: parseFloat(process.env.LLM_TOP_P || '1.0'),
-    stream: !!onChunk,
     ...options
   };
 
   try {
-    if (params.stream) {
-      const response = await openai.createChatCompletion(params);
-      let fullResponse = '';
-      for await (const chunk of response.data) {
-        const content = chunk.choices[0]?.delta?.content || '';
-        fullResponse += content;
-        if (onChunk && content) {
-          onChunk(content);
-        }
-      }
-      return fullResponse;
-    } else {
-      const response = await openai.createChatCompletion(params);
-      return response.data.choices[0].message.content;
-    }
+    // 兼容：为了确保在 v4 SDK 下稳定运行，这里默认使用非流式；
+    // SSE 场景在上层通过分片输出模拟（见 askQuestion）。
+    const completion = await openai.chat.completions.create(params);
+    const content = completion.choices?.[0]?.message?.content || '';
+    if (onChunk && content) onChunk(content);
+    return content;
   } catch (error) {
     console.error('LLM API调用失败:', error);
     // 降级处理：尝试其他模型或返回本地知识库回答
     if (params.model !== 'gpt-3.5-turbo') {
       // 重试基础模型
       params.model = 'gpt-3.5-turbo';
-      delete params.stream;
       try {
-        const response = await openai.createChatCompletion(params);
-        return response.data.choices[0].message.content;
+        const completion = await openai.chat.completions.create(params);
+        return completion.choices?.[0]?.message?.content || '';
       } catch (retryError) {
         console.error('降级模型调用也失败:', retryError);
       }
@@ -343,13 +330,9 @@ export async function askQuestion(event) {
     };
     db.conversations.push(conversationEntry);
 
-    // 准备流式响应
+    // SSE：用“模拟分片”的方式保持兼容（SDK v4 的真实流式需额外处理）
     if (event.headers.accept && event.headers.accept.includes('text/event-stream')) {
-      // 流式响应
-      const chunks = [];
-      const response = await callLLM(prompt, {}, (chunk) => {
-        chunks.push(chunk);
-      });
+      const response = await callLLM(prompt);
 
       // 存储完整回答
       const answerEntry = {
@@ -366,7 +349,12 @@ export async function askQuestion(event) {
       db.conversations.push(answerEntry);
 
       // 构建SSE响应
-      const sseChunks = chunks.map(chunk => `data: ${JSON.stringify({ content: chunk })}\n\n`);
+      const sseChunks = [];
+      const chunkSize = 40;
+      for (let i = 0; i < response.length; i += chunkSize) {
+        const part = response.slice(i, i + chunkSize);
+        sseChunks.push(`data: ${JSON.stringify({ content: part })}\n\n`);
+      }
       sseChunks.push('data: [DONE]\n\n');
 
       return {

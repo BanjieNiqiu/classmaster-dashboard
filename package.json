@@ -2,11 +2,12 @@
   "name": "class-affairs-system",
   "version": "1.0.0",
   "description": "统双班务网页 - 班级事务综合管理系统。基于Vercel Serverless Functions的全栈Web应用，包含用户管理、班务收集、物资借用、课程查询、文档共享、LLM智能问答和后台管理系统。",
+  "type": "module",
   "main": "./api/index.js",
   "scripts": {
     "dev": "nodemon api/index.js",
     "start": "node api/index.js",
-    "test": "jest --coverage",
+    "test": "jest --coverage --passWithNoTests",
     "test:unit": "jest unit-tests/",
     "test:integration": "jest integration-tests/",
     "lint": "eslint . --ext .js",
@@ -64,7 +65,6 @@
     "eslint": "^8.50.0",
     "prettier": "^3.0.3",
     "@vercel/node": "^2.2.3",
-    "dotenv": "^16.3.1",
     "cross-env": "^7.0.3"
   }
 }

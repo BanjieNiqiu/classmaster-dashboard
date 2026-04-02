@@ -1,23 +1,18 @@
 /**
  * api/index.js - 统双班务网页 Serverless Functions 主入口文件
- * 作为Vercel无服务器函数的统一入口，实现API路由分发、中间件集成和请求处理
- * 部署于 Vercel Serverless Functions (/api)
+ * 统一入口：将 /api 下的请求按前缀分发到各模块的 default handler（event 风格）
  */
 
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+// 本地开发时加载 .env（Vercel 生产环境会自动注入环境变量）
+import 'dotenv/config';
 
-// 加载环境变量配置
-require('dotenv').config();
-
-// 导入各API模块处理器
-import * as usersHandler from './users.js';
-import * as tasksHandler from './tasks.js';
-import * as itemsHandler from './items.js';
-import * as coursesHandler from './courses.js';
-import * as documentsHandler from './documents.js';
-import * as llmHandler from './llm.js';
-import * as adminHandler from './admin.js';
+import usersHandler from './users.js';
+import tasksHandler from './tasks.js';
+import itemsHandler from './items.js';
+import coursesHandler from './courses.js';
+import documentsHandler from './documents.js';
+import llmHandler from './llm.js';
+import adminHandler from './admin.js';
 
 // CORS 头部配置
 const corsHeaders = {
@@ -42,16 +37,11 @@ function parsePathParams(path, pattern) {
   const regex = new RegExp(pattern);
   const match = path.match(regex);
   if (!match) return null;
-  
-  // 提取命名捕获组或路径参数
-  const params = {};
-  if (pattern.includes('{id}') || pattern.includes('{task_id}') || pattern.includes('{item_id}')) {
-    const keys = pattern.match(/{(\w+)}/g)?.map(k => k.slice(1, -1)) || [];
-    keys.forEach((key, index) => {
-      params[key] = match[index + 1];
-    });
-  }
-  return Object.keys(params).length > 0 ? params : null;
+
+  // 目前路由 pattern 均为正则捕获组形式：^/api/xxx/([^/]+)$
+  // 这里统一把第一个捕获组映射为 id（各模块内部再按需命名）
+  if (match.length <= 1) return null;
+  return { id: match[1] };
 }
 
 // 统一错误响应构造函数
@@ -116,58 +106,6 @@ async function parseRequestBody(event) {
   }
 }
 
-// 路由表定义：根据路径模式匹配对应的处理函数
-const ROUTES = [
-  // 用户管理路由
-  { method: 'GET', pattern: '^/api/users$', handler: usersHandler.getUsers },
-  { method: 'POST', pattern: '^/api/users$', handler: usersHandler.createUser },
-  { method: 'GET', pattern: '^/api/users/([^/]+)$', handler: usersHandler.getUserById },
-  { method: 'PUT', pattern: '^/api/users/([^/]+)$', handler: usersHandler.updateUser },
-  { method: 'DELETE', pattern: '^/api/users/([^/]+)$', handler: usersHandler.deleteUser },
-  { method: 'POST', pattern: '^/api/users/login$', handler: usersHandler.loginUser },
-
-  // 任务管理路由
-  { method: 'GET', pattern: '^/api/tasks$', handler: tasksHandler.getTasks },
-  { method: 'POST', pattern: '^/api/tasks$', handler: tasksHandler.createTask },
-  { method: 'GET', pattern: '^/api/tasks/([^/]+)$', handler: tasksHandler.getTaskById },
-  { method: 'PUT', pattern: '^/api/tasks/([^/]+)$', handler: tasksHandler.updateTask },
-  { method: 'DELETE', pattern: '^/api/tasks/([^/]+)$', handler: tasksHandler.deleteTask },
-  { method: 'POST', pattern: '^/api/tasks/([^/]+)/submissions$', handler: tasksHandler.submitForm },
-
-  // 物资管理路由
-  { method: 'GET', pattern: '^/api/items$', handler: itemsHandler.getItems },
-  { method: 'POST', pattern: '^/api/items$', handler: itemsHandler.createItem },
-  { method: 'GET', pattern: '^/api/items/([^/]+)$', handler: itemsHandler.getItemById },
-  { method: 'POST', pattern: '^/api/items/([^/]+)/borrow$', handler: itemsHandler.borrowItem },
-  { method: 'POST', pattern: '^/api/items/([^/]+)/return$', handler: itemsHandler.returnItem },
-  { method: 'POST', pattern: '^/api/items/([^/]+)/confirm-return$', handler: itemsHandler.confirmReturn },
-
-  // 课程管理路由
-  { method: 'GET', pattern: '^/api/courses$', handler: coursesHandler.getCourses },
-  { method: 'POST', pattern: '^/api/courses$', handler: coursesHandler.createCourse },
-  { method: 'GET', pattern: '^/api/courses/([^/]+)$', handler: coursesHandler.getCourseById },
-  { method: 'POST', pattern: '^/api/courses/([^/]+)/intel$', handler: coursesHandler.publishIntel },
-  { method: 'POST', pattern: '^/api/courses/intel/([^/]+)/upvote$', handler: coursesHandler.upvoteIntel },
-
-  // 文档管理路由
-  { method: 'GET', pattern: '^/api/documents$', handler: documentsHandler.getDocuments },
-  { method: 'POST', pattern: '^/api/documents$', handler: documentsHandler.uploadDocument },
-  { method: 'GET', pattern: '^/api/documents/([^/]+)$', handler: documentsHandler.getDocumentById },
-  { method: 'GET', pattern: '^/api/documents/([^/]+)/download$', handler: documentsHandler.downloadDocument },
-  { method: 'POST', pattern: '^/api/documents/([^/]+)/mark-important$', handler: documentsHandler.markImportant },
-
-  // LLM问答路由
-  { method: 'POST', pattern: '^/api/llm/ask$', handler: llmHandler.askQuestion },
-  { method: 'POST', pattern: '^/api/llm/conversation$', handler: llmHandler.createConversation },
-  { method: 'GET', pattern: '^/api/llm/conversation/([^/]+)$', handler: llmHandler.getConversation },
-
-  // 后台管理路由
-  { method: 'GET', pattern: '^/api/admin/dashboard$', handler: adminHandler.getDashboard },
-  { method: 'GET', pattern: '^/api/admin/config$', handler: adminHandler.getConfig },
-  { method: 'PUT', pattern: '^/api/admin/config$', handler: adminHandler.updateConfig },
-  { method: 'GET', pattern: '^/api/admin/audit-logs$', handler: adminHandler.getAuditLogs }
-];
-
 // 路由分发主处理器
 export default async function handler(event, context) {
   const startTime = Date.now();
@@ -191,33 +129,38 @@ export default async function handler(event, context) {
       return result;
     }
 
-    // 查找匹配的路由
-    const route = ROUTES.find(r => r.method === method && new RegExp(r.pattern).test(path));
-    
-    if (!route) {
-      logRequest(event, startTime);
-      return createError('接口未找到', 404);
-    }
-
-    // 解析路径参数
-    const pathParams = parsePathParams(path, route.pattern);
-    
-    // 解析请求体
-    let requestBody = {};
+    // 解析请求体（注意：下游模块普遍期望 event.body 为 JSON 字符串）
+    // 这里只做“可选解析”，并把解析结果放到 event.parsedBody 供需要的模块使用
+    let parsedBody = undefined;
     if (['POST', 'PUT', 'PATCH'].includes(method) && event.body) {
-      requestBody = await parseRequestBody(event);
+      try {
+        parsedBody = await parseRequestBody(event);
+      } catch {
+        // 仍交给下游模块处理（下游会返回更具体的错误）
+      }
     }
 
-    // 构造上下文对象传递给处理函数
-    const requestContext = {
-      ...event,
-      pathParameters: pathParams,
-      body: requestBody,
-      query: event.queryStringParameters || {}
-    };
+    const routedEvent = { ...event, parsedBody };
 
-    // 调用对应的处理函数
-    const response = await route.handler(requestContext);
+    // 按前缀分发到各模块的 default handler（保持各模块自己的路由逻辑）
+    let response;
+    if (path.startsWith('/api/users')) {
+      response = await usersHandler(routedEvent, context);
+    } else if (path.startsWith('/api/tasks')) {
+      response = await tasksHandler(routedEvent, context);
+    } else if (path.startsWith('/api/items')) {
+      response = await itemsHandler(routedEvent, context);
+    } else if (path.startsWith('/api/courses')) {
+      response = await coursesHandler(routedEvent, context);
+    } else if (path.startsWith('/api/documents')) {
+      response = await documentsHandler(routedEvent, context);
+    } else if (path.startsWith('/api/llm')) {
+      response = await llmHandler(routedEvent, context);
+    } else if (path.startsWith('/api/admin')) {
+      response = await adminHandler(routedEvent, context);
+    } else {
+      response = createError('接口未找到', 404);
+    }
 
     // 确保响应头包含CORS
     if (response.headers) {

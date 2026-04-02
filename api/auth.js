@@ -1,5 +1,5 @@
 // api/auth.js
-const bcrypt = require('bcrypt');
+import bcrypt from 'bcrypt';
 
 /**
  * 对密码进行哈希加密
@@ -7,7 +7,7 @@ const bcrypt = require('bcrypt');
  * @param {number} rounds - 加密轮数，默认10
  * @returns {Promise<string>} 加密后的哈希值
  */
-async function hashPassword(password, rounds = 10) {
+export async function hashPassword(password, rounds = 10) {
   if (!password) {
     throw new Error('密码不能为空');
   }
@@ -20,14 +20,9 @@ async function hashPassword(password, rounds = 10) {
  * @param {string} hashedPassword - 哈希密码
  * @returns {Promise<boolean>} 是否匹配
  */
-async function verifyPassword(plainPassword, hashedPassword) {
+export async function verifyPassword(plainPassword, hashedPassword) {
   if (!plainPassword || !hashedPassword) {
     return false;
   }
   return await bcrypt.compare(plainPassword, hashedPassword);
 }
-
-module.exports = {
-  hashPassword,
-  verifyPassword,
-};

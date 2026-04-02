@@ -1,6 +1,6 @@
 // api/utils.js
-const { MongoClient, ObjectId } = require('mongodb');
-const jwt = require('jsonwebtoken');
+import { MongoClient, ObjectId } from 'mongodb';
+import jwt from 'jsonwebtoken';
 
 let dbInstance = null;
 
@@ -8,7 +8,7 @@ let dbInstance = null;
  * 获取数据库实例
  * @returns {Promise<Object>} MongoDB数据库实例
  */
-async function getDatabase() {
+export async function getDatabase() {
   if (dbInstance) {
     return dbInstance;
   }
@@ -39,8 +39,11 @@ async function getDatabase() {
  * @param {string} minRole - 最低所需角色 ('guest', 'student', 'monitor', 'admin')
  * @returns {Promise<Object>} 解析后的用户信息
  */
-async function authenticate(req, minRole = 'student') {
-  const authHeader = req.headers.authorization;
+export async function authenticate(event, minRole = 'student') {
+  const authHeader =
+    event?.headers?.authorization ||
+    event?.headers?.Authorization ||
+    event?.headers?.AUTHORIZATION;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return { error: '缺少或无效的身份令牌' };
   }
@@ -89,8 +92,3 @@ async function authenticate(req, minRole = 'student') {
     return { error: '身份验证失败' };
   }
 }
-
-module.exports = {
-  getDatabase,
-  authenticate,
-};
